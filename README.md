@@ -1,0 +1,75 @@
+# ship-plugin
+
+KevTheDev's Claude Code plugin marketplace, named `kevthedev`. One repo, installable on any machine with `claude plugin ...`.
+
+| Plugin | What it is |
+|---|---|
+| [`ship`](plugins/ship) | A role-based dev team: ticket intake, architecture, platform engineers, QA and tech-lead review, run by `/ship:new-ticket`, `/ship:new-feature` and `/ship:hotfix`. Falls back to a file tracker (`/ship:projma`) when Linear isn't connected. |
+
+## Install on a new machine
+
+Requires Claude Code. The repo is public, so no GitHub login is needed.
+
+```
+claude plugin marketplace add cabrerakevinc/ship-plugin
+claude plugin install ship@kevthedev
+```
+
+Then, inside Claude Code, run `/mcp` once and complete the Linear login.
+
+Plugins are installed per config directory. If you use more than one profile (`CLAUDE_CONFIG_DIR`), repeat the two commands in each.
+
+## Update
+
+```
+claude plugin marketplace update kevthedev
+claude plugin update ship@kevthedev
+```
+
+Or open `/plugin` inside Claude Code. There is no version number to bump: the git commit is the version, so every push is an update.
+
+## What `ship` gives you
+
+Commands. You run these; Claude never triggers them on its own.
+
+- `/ship:new-ticket <idea or bug>` — `ship:ba-intake` drafts a title, scope and a Definition of Done checklist; the ticket is created for you.
+- `/ship:new-feature <ticket or description>` — solutions-architect (if multi-platform) → architect → platform engineer(s) → qa-tester → tech-lead-reviewer, posting a sign-off on the ticket after every step. Ends in the ready-for-review state. Never closes the ticket.
+- `/ship:hotfix <ticket or bug>` — fast lane: reproduce, minimal fix, targeted tests, regression-focused review.
+- `/ship:projma [init | status]` — the file-based tracker. `init` scaffolds `docs/projma/`; `status` summarises open tickets.
+
+Agents. Read-only ones cannot edit code or touch the tracker.
+
+- `ship:ba-intake` — ticket drafts with a DoD checklist (read-only)
+- `ship:solutions-architect` — cross-platform shape of a ticket (read-only)
+- `ship:architect` — single-platform technical design (read-only)
+- `ship:front-end-swift-engineer` — iOS implementation
+- `ship:front-end-android-engineer` — Android implementation
+- `ship:front-end-web-designer` — web UI/UX spec (writes the spec file only)
+- `ship:front-end-web-developer` — web implementation
+- `ship:backend-engineer` — backend implementation
+- `ship:qa-tester` — runs and writes tests, never edits production code
+- `ship:tech-lead-reviewer` — item-by-item DoD review (read-only)
+
+Only the main session writes to the ticket tracker; no subagent has Linear or file-tracker write access. Nothing here ever sets a ticket to Closed. That is your call, after your own final check.
+
+## Linear is optional
+
+The plugin registers the Linear MCP server (`https://mcp.linear.app/mcp`). To turn it off in one profile, open `/mcp` and toggle it; the plugin stays installed.
+
+Without Linear, the skills use `docs/projma/` in the target repo: `tasks.csv` (the index and the only place status lives), one file per ticket under `resources/` with its DoD checklist and sign-off log, and `memory.md` for durable project context. The skills ask once before creating that folder. Conventions: [`plugins/ship/skills/projma/templates/CLAUDE.md`](plugins/ship/skills/projma/templates/CLAUDE.md).
+
+## Developing
+
+```
+scripts/check.sh    # structural checks + claude plugin validate
+scripts/smoke.sh    # functional test: a few Claude calls, throwaway repo
+claude --plugin-dir plugins/ship    # try it in a real session without installing
+```
+
+Edit, run the checks, commit, push. In an open session, `/reload-plugins` picks up changes without restarting.
+
+## Adding another plugin
+
+1. Create `plugins/<name>/` with `.claude-plugin/plugin.json` and its `skills/`, `agents/`, `.mcp.json` as needed.
+2. Add an entry to `.claude-plugin/marketplace.json` with `"source": "./plugins/<name>"`.
+3. `claude plugin validate plugins/<name>` and `claude plugin validate .`, then push. Install with `claude plugin install <name>@kevthedev`.
