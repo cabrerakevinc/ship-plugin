@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "kevthedev",
+  "description": "KevTheDev's Claude Code plugins",
+  "owner": {
+    "name": "Kevin Cabrera",
+    "url": "https://github.com/cabrerakevinc"
+  },
+  "plugins": [
+    {
+      "name": "ship",
+      "description": "Role-based dev team for Claude Code: ticket intake, solutions/feature architecture, iOS/Android/web/backend engineers, QA, and tech-lead review, orchestrated by /ship:new-ticket, /ship:new-feature and /ship:hotfix",
+      "source": "./plugins/ship",
+      "category": "development"
+    }
+  ]
+}

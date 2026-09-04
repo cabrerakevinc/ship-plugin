@@ -1,0 +1,10 @@
+{
+  "name": "ship",
+  "description": "Role-based dev team for Claude Code: ticket intake, solutions/feature architecture, iOS/Android/web/backend engineers, QA, and tech-lead review, orchestrated by /ship:new-ticket, /ship:new-feature and /ship:hotfix",
+  "author": {
+    "name": "Kevin Cabrera",
+    "url": "https://github.com/cabrerakevinc"
+  },
+  "repository": "https://github.com/cabrerakevinc/ship-plugin",
+  "keywords": ["agents", "workflow", "sdlc", "tickets", "linear"]
+}
