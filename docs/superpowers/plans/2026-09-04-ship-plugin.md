@@ -757,17 +757,19 @@ gh auth status 2>&1 | grep -E 'Logged in|account'
 ```
 Expected: `0` (nothing uncommitted) and a line showing the `cabrerakevinc` account is logged in. If the tree is not clean, commit or discard before continuing.
 
-- [ ] **Step 2: Push to the existing public repo**
+- [ ] **Step 2: Push `main` to the existing remote**
 
-The repo `cabrerakevinc/ship-plugin` already exists and is empty; do not create one.
+The remote `origin` (`git@github.com:cabrerakevinc/ship-plugin.git`) already exists locally and already holds an earlier, superseded state: `main` at `c95cb8d` (Tasks 1–4 only) and a stale `build-ship-plugin` branch at `e85e9d5`, both pushed by a subagent without authorization during execution. Both commits are ancestors of the reviewed `main`, so the push is a plain fast-forward. Do not `remote add`, do not force.
 
 ```bash
-gh repo view cabrerakevinc/ship-plugin --json visibility,isEmpty,url --jq '{visibility, isEmpty, url}'
-git remote add origin https://github.com/cabrerakevinc/ship-plugin.git
-git push -u origin main
+git branch --show-current                      # must print: main
+git merge-base --is-ancestor c95cb8d HEAD && echo "fast-forward ok"
+git push origin main
+git merge-base --is-ancestor e85e9d5 HEAD && git push origin --delete build-ship-plugin
+git ls-remote --heads origin
 gh repo view cabrerakevinc/ship-plugin --json visibility,url,defaultBranchRef --jq '{visibility, url, branch: .defaultBranchRef.name}'
 ```
-Expected before the push: `"visibility": "PUBLIC"`, `"isEmpty": true`. After: `"visibility": "PUBLIC"`, the URL, and `"branch": "main"`. If `isEmpty` is `false` before the push, stop and report what the remote already contains rather than pushing over it.
+Expected: `main`; `fast-forward ok`; a non-forced push updating `main`; the stale branch deleted; `ls-remote` showing only `refs/heads/main` at the local HEAD SHA; `"visibility": "PUBLIC"` and `"branch": "main"`.
 
 - [ ] **Step 3: Add the marketplace from GitHub**
 
@@ -777,7 +779,7 @@ Expected: success message naming the marketplace `kevthedev`. Then:
 Run: `claude plugin marketplace list`
 Expected: `kevthedev` appears with the GitHub source.
 
-The repo is public, so no credentials are involved. If the add fails, the likely cause is that the push in Step 2 did not land or the manifest path is wrong; check `gh repo view cabrerakevinc/ship-plugin --json isEmpty` and that `.claude-plugin/marketplace.json` is at the repo root on `main`.
+The repo is public, so no credentials are involved. If the add fails, the likely cause is that the push in Step 2 did not land or the manifest path is wrong; check that `git ls-remote --heads origin` shows `main` at the local HEAD SHA and that `.claude-plugin/marketplace.json` is at the repo root on `main`.
 
 - [ ] **Step 4: Install the plugin and confirm its inventory**
 

@@ -23,7 +23,7 @@ for n in ship:projma \
          ship:backend-engineer ship:qa-tester ship:tech-lead-reviewer; do
   if grep -q "$n" <<<"$inv"; then ok "inventory lists $n"; else bad "inventory missing $n"; fi
 done
-if grep -qi "linear" <<<"$inv"; then ok "inventory lists the linear MCP server"; else warn "linear MCP server not listed (expected if not yet authenticated; verify with 'claude plugin details ship@kevthedev' after install)"; fi
+if grep -qiE '(^|:)linear$' <<<"$inv"; then ok "inventory lists the linear MCP server"; else warn "linear MCP server not listed (expected if not yet authenticated; verify with 'claude plugin details ship@kevthedev' after install)"; fi
 
 echo "=== 2. /ship:projma in a throwaway repo ==="
 SCRATCH=$(mktemp -d "${TMPDIR:-/tmp}/ship-smoke-XXXXXX")

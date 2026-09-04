@@ -43,6 +43,15 @@ for a in "${AGENTS[@]}"; do
   grep -q "^description: " "$f"     || bad "$f: description missing"
 done
 
+# Read-only roles must keep exactly the read-only tool list, and no agent may reach MCP tools.
+for ro in ba-intake solutions-architect tech-lead-reviewer; do
+  f="plugins/ship/agents/$ro.md"
+  if [ -f "$f" ]; then
+    grep -q '^tools: Read, Grep, Glob$' "$f" || bad "$f: read-only agent must have exactly 'tools: Read, Grep, Glob'"
+  fi
+done
+if grep -rl 'mcp__' plugins/ship/agents >/dev/null 2>&1; then bad "an agent lists MCP tools (mcp__*)"; else ok "no agent lists MCP tools"; fi
+
 # No bare (unprefixed) agent name inside backticks anywhere in agent or skill bodies.
 BARE='`(ba-intake|solutions-architect|architect|front-end-ios-engineer|front-end-swift-engineer|front-end-android-engineer|front-end-web-designer|front-end-web-developer|backend-engineer|qa-tester|tech-lead-reviewer)`'
 if [ -d plugins/ship/agents ] || [ -d plugins/ship/skills ]; then

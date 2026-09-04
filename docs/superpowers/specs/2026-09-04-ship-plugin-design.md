@@ -145,8 +145,9 @@ Code applies the prefix. Names may not contain `:`.
 Skill frontmatter (`description`, `argument-hint`,
 `disable-model-invocation: true`) and agent frontmatter (`tools`, `model:
 sonnet`) are used exactly as written; all fields are confirmed supported.
-`$ARGUMENTS` substitution works unchanged. Skills have no `name:` field; the
-folder name is the skill name.
+`$ARGUMENTS` substitution works unchanged. The three orchestrating skills have
+no `name:` field (the folder name is the skill name); `projma` declares
+`name: projma`, matching its folder.
 
 Complete list of references changed (all become `ship:<name>`):
 

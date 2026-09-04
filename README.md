@@ -30,7 +30,7 @@ Or open `/plugin` inside Claude Code. There is no version number to bump: the gi
 
 ## What `ship` gives you
 
-Commands. You run these; Claude never triggers them on its own.
+Commands. You run the first three; Claude never triggers them on its own. `/ship:projma` can also be invoked by those skills, after you say yes to creating the tracker.
 
 - `/ship:new-ticket <idea or bug>` — `ship:ba-intake` drafts a title, scope and a Definition of Done checklist; the ticket is created for you.
 - `/ship:new-feature <ticket or description>` — solutions-architect (when the ticket is unclear, multi-platform, or non-trivial; it insists on understanding the infrastructure first, asking you for explicit read-only AWS access or a diagram if the repo doesn't tell it enough) → platform engineer(s) → qa-tester → tech-lead-reviewer, posting a sign-off on the ticket after every step. Ends in the ready-for-review state. Never closes the ticket.
@@ -66,6 +66,8 @@ claude --plugin-dir plugins/ship    # try it in a real session without installin
 ```
 
 Edit, run the checks, commit, push. In an open session, `/reload-plugins` picks up changes without restarting.
+
+`claude plugin validate` warns that no version is specified. That is expected: the git commit is the version.
 
 ## Adding another plugin
 
