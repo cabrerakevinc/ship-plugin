@@ -107,5 +107,34 @@ for r in solutions-architect architect front-end-swift-engineer front-end-androi
 done
 expect_refs $S/hotfix/SKILL.md tech-lead-reviewer 2
 
+# === projma ===
+P=plugins/ship/skills/projma
+if need_file $P/SKILL.md; then
+  grep -q '^name: projma$' $P/SKILL.md                 || bad "$P/SKILL.md: name must be projma"
+  grep -q '^argument-hint: \[init | status\]$' $P/SKILL.md || bad "$P/SKILL.md: argument-hint must be [init | status]"
+  grep -q 'disable-model-invocation' $P/SKILL.md       && bad "$P/SKILL.md: must stay model-invocable (remove disable-model-invocation)"
+  grep -q '\${CLAUDE_SKILL_DIR}/templates/' $P/SKILL.md || bad "$P/SKILL.md: must copy from \${CLAUDE_SKILL_DIR}/templates/"
+  grep -q '\$ARGUMENTS' $P/SKILL.md                    || bad "$P/SKILL.md: \$ARGUMENTS missing"
+fi
+for tpl in CLAUDE.md memory.md tasks.csv; do need_file $P/templates/$tpl; done
+if [ -f $P/templates/tasks.csv ]; then
+  if [ "$(cat $P/templates/tasks.csv)" = "id,title,type,platforms,status,created,updated,file" ] && [ "$(wc -l < $P/templates/tasks.csv | tr -d ' ')" = "1" ]; then
+    ok "tasks.csv template is exactly the header row"
+  else
+    bad "tasks.csv template must be exactly one line: id,title,type,platforms,status,created,updated,file"
+  fi
+fi
+for tpl in CLAUDE.md memory.md; do
+  if [ -f $P/templates/$tpl ]; then
+    grep -q '{{DATE}}' $P/templates/$tpl    || bad "$P/templates/$tpl: {{DATE}} placeholder missing"
+    grep -q '{{PROJECT}}' $P/templates/$tpl || bad "$P/templates/$tpl: {{PROJECT}} placeholder missing"
+  fi
+done
+if [ -f $P/templates/CLAUDE.md ]; then
+  for must in 'id,title,type,platforms,status,created,updated,file' '`todo`' '`in-progress`' '`in-review`' '`closed`' 'Sign-off log' 'Definition of Done' 'ship:tech-lead-reviewer'; do
+    grep -qF -- "$must" $P/templates/CLAUDE.md || bad "$P/templates/CLAUDE.md: missing '$must'"
+  done
+fi
+
 # === summary ===
 if [ "$fail" -eq 0 ]; then echo "ALL CHECKS PASSED"; else echo "CHECKS FAILED"; exit 1; fi
