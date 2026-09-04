@@ -549,9 +549,12 @@ bad()  { echo "FAIL $1"; fail=1; }
 warn() { echo "WARN $1"; }
 
 echo "=== 1. inventory ==="
-inv=$(claude --plugin-dir "$PLUGIN" -p "List the name of every skill and every agent type available to you whose name starts with 'ship:', and the name of every MCP server you have (even if it is not authenticated). Output only the names, one per line, nothing else." --output-format text 2>/dev/null)
+inv=$(claude --plugin-dir "$PLUGIN" -p "List the name of every skill and every agent type you can see whose name starts with 'ship:', and the name of every MCP server you have (even if it is not authenticated). Output only the names, one per line, nothing else." --output-format text 2>/dev/null)
 echo "$inv"
-for n in ship:new-ticket ship:new-feature ship:hotfix ship:projma \
+# new-ticket, new-feature and hotfix carry disable-model-invocation: true and are
+# hidden from the model by design; they're verified structurally by scripts/check.sh
+# and, after install, by `claude plugin details`.
+for n in ship:projma \
          ship:ba-intake ship:solutions-architect ship:architect \
          ship:front-end-swift-engineer ship:front-end-android-engineer \
          ship:front-end-web-designer ship:front-end-web-developer \
@@ -596,7 +599,7 @@ chmod +x scripts/smoke.sh
 - [ ] **Step 2: Run the smoke test**
 
 Run: `scripts/smoke.sh`
-Expected: every `ok` line in section 1 for the four skills and ten agents; in section 2, `init created ...` ×4, `exactly the four files`, `placeholders substituted`, `today's date substituted`, `project name substituted`, `tasks.csv header intact`, `second init changed nothing`, `second init reported the tracker already exists`, `status wrote nothing`, `status printed a summary`; final line `SMOKE PASSED`, exit 0. A `WARN` about the linear server is acceptable.
+Expected: every `ok` line in section 1 for `ship:projma` and the ten agents (the three user-only skills are hidden from the model by design); in section 2, `init created ...` ×4, `exactly the four files`, `placeholders substituted`, `today's date substituted`, `project name substituted`, `tasks.csv header intact`, `second init changed nothing`, `second init reported the tracker already exists`, `status wrote nothing`, `status printed a summary`; final line `SMOKE PASSED`, exit 0. A `WARN` about the linear server is acceptable.
 
 If a section-2 check fails, read the printed model output to see what the skill did, fix the wording in `plugins/ship/skills/projma/SKILL.md` **and** the same block in the spec (A.14) so they stay identical, re-run `scripts/spec-diff.py plugins/ship/skills/projma/SKILL.md`, then re-run the smoke test. Do not loosen the assertions to make it pass.
 

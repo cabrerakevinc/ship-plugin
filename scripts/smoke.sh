@@ -11,9 +11,12 @@ bad()  { echo "FAIL $1"; fail=1; }
 warn() { echo "WARN $1"; }
 
 echo "=== 1. inventory ==="
-inv=$(claude --plugin-dir "$PLUGIN" -p "List the name of every skill and every agent type available to you whose name starts with 'ship:', and the name of every MCP server you have (even if it is not authenticated). Output only the names, one per line, nothing else." --output-format text 2>/dev/null)
+inv=$(claude --plugin-dir "$PLUGIN" -p "List the name of every skill and every agent type you can see whose name starts with 'ship:', and the name of every MCP server you have (even if it is not authenticated). Output only the names, one per line, nothing else." --output-format text 2>/dev/null)
 echo "$inv"
-for n in ship:new-ticket ship:new-feature ship:hotfix ship:projma \
+# new-ticket, new-feature and hotfix carry disable-model-invocation: true and are
+# hidden from the model by design; they're verified structurally by scripts/check.sh
+# and, after install, by `claude plugin details`.
+for n in ship:projma \
          ship:ba-intake ship:solutions-architect ship:architect \
          ship:front-end-swift-engineer ship:front-end-android-engineer \
          ship:front-end-web-designer ship:front-end-web-developer \

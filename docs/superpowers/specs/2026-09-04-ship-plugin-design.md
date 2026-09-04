@@ -314,8 +314,10 @@ Done means all of the following are observed, not assumed:
 
 1. `claude plugin validate plugins/ship` passes.
 2. A non-interactive run with `claude --plugin-dir plugins/ship -p ...` lists
-   all four `ship:` skills, all ten `ship:` agents, and the `linear` MCP
-   server as available.
+   the `ship:projma` skill, all ten `ship:` agents, and the `linear` MCP
+   server as available (the three `disable-model-invocation` skills are
+   hidden from the model by design and are verified by `check.sh` and by
+   `claude plugin details` after install).
 2a. In a throwaway git repo, `/ship:projma init` (run non-interactively with
    `--plugin-dir`) creates exactly `docs/projma/{CLAUDE.md,memory.md,tasks.csv,resources/.gitkeep}`
    with `{{DATE}}`/`{{PROJECT}}` substituted; running it again refuses to
