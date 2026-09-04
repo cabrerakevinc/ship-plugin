@@ -160,6 +160,11 @@ if python3 -c 'import json,sys; c=json.load(sys.stdin)["hookSpecificOutput"]; as
 else
   bad "session-start.sh output is not the expected JSON"
 fi
+for f in check-commit.sh check-commit-msg.py; do need_file "$H/$f"; done
+if python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' "$H/check-commit-msg.py" 2>/dev/null; then ok "check-commit-msg.py parses"; else bad "check-commit-msg.py does not parse"; fi
+hout=$(mktemp)
+if scripts/test-commit-hook.sh >"$hout" 2>&1; then ok "scripts/test-commit-hook.sh"; else bad "scripts/test-commit-hook.sh"; grep -E '^FAIL' "$hout"; fi
+rm -f "$hout"
 
 # === summary ===
 if [ "$fail" -eq 0 ]; then echo "ALL CHECKS PASSED"; else echo "CHECKS FAILED"; exit 1; fi
