@@ -32,5 +32,51 @@ if claude plugin validate plugins/ship >"$out" 2>&1; then ok "claude plugin vali
 if claude plugin validate . >"$out" 2>&1; then ok "claude plugin validate . (marketplace)"; else bad "claude plugin validate . (marketplace)"; cat "$out"; fi
 rm -f "$out"
 
+# === agents ===
+AGENTS=(ba-intake solutions-architect architect front-end-swift-engineer front-end-android-engineer front-end-web-designer front-end-web-developer backend-engineer qa-tester tech-lead-reviewer)
+for a in "${AGENTS[@]}"; do
+  f="plugins/ship/agents/$a.md"
+  need_file "$f" || continue
+  grep -q "^name: $a\$" "$f"        || bad "$f: frontmatter name must be exactly '$a'"
+  grep -q "^model: sonnet\$" "$f"   || bad "$f: model must be sonnet"
+  grep -q "^tools: " "$f"           || bad "$f: tools line missing"
+  grep -q "^description: " "$f"     || bad "$f: description missing"
+done
+
+# No bare (unprefixed) agent name inside backticks anywhere in agent or skill bodies.
+BARE='`(ba-intake|solutions-architect|architect|front-end-swift-engineer|front-end-android-engineer|front-end-web-designer|front-end-web-developer|backend-engineer|qa-tester|tech-lead-reviewer)`'
+if [ -d plugins/ship/agents ] || [ -d plugins/ship/skills ]; then
+  if grep -rnE "$BARE" plugins/ship/agents plugins/ship/skills 2>/dev/null; then
+    bad "unprefixed agent references found above (must be ship:<name>)"
+  else
+    ok "every backticked agent reference carries the ship: prefix"
+  fi
+fi
+
+# Exact reference counts from spec section 5.
+expect_refs() { # file agent count
+  [ -f "$1" ] || return 0
+  local n; n=$(grep -o "\`ship:$2\`" "$1" | wc -l | tr -d ' ')
+  if [ "$n" = "$3" ]; then ok "$1 -> ship:$2 x$3"; else bad "$1 expected $3 ref(s) to ship:$2, found $n"; fi
+}
+A=plugins/ship/agents
+expect_refs $A/ba-intake.md tech-lead-reviewer 1
+expect_refs $A/solutions-architect.md architect 2
+expect_refs $A/architect.md solutions-architect 1
+for e in front-end-swift-engineer front-end-android-engineer; do
+  expect_refs $A/$e.md architect 1; expect_refs $A/$e.md solutions-architect 1
+  expect_refs $A/$e.md qa-tester 1;  expect_refs $A/$e.md tech-lead-reviewer 1
+done
+expect_refs $A/front-end-web-designer.md front-end-web-developer 2
+expect_refs $A/front-end-web-developer.md front-end-web-designer 1
+expect_refs $A/front-end-web-developer.md backend-engineer 1
+expect_refs $A/front-end-web-developer.md qa-tester 1
+expect_refs $A/front-end-web-developer.md tech-lead-reviewer 1
+for r in architect solutions-architect front-end-swift-engineer front-end-android-engineer front-end-web-developer qa-tester tech-lead-reviewer; do
+  expect_refs $A/backend-engineer.md $r 1
+done
+if [ -f $A/qa-tester.md ] && grep -q '`ship:' $A/qa-tester.md; then bad "qa-tester.md should reference no agents"; fi
+if [ -f $A/tech-lead-reviewer.md ] && grep -q '`ship:' $A/tech-lead-reviewer.md; then bad "tech-lead-reviewer.md should reference no agents"; fi
+
 # === summary ===
 if [ "$fail" -eq 0 ]; then echo "ALL CHECKS PASSED"; else echo "CHECKS FAILED"; exit 1; fi
