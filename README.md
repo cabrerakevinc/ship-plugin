@@ -33,16 +33,15 @@ Or open `/plugin` inside Claude Code. There is no version number to bump: the gi
 Commands. You run these; Claude never triggers them on its own.
 
 - `/ship:new-ticket <idea or bug>` — `ship:ba-intake` drafts a title, scope and a Definition of Done checklist; the ticket is created for you.
-- `/ship:new-feature <ticket or description>` — solutions-architect (if multi-platform) → architect → platform engineer(s) → qa-tester → tech-lead-reviewer, posting a sign-off on the ticket after every step. Ends in the ready-for-review state. Never closes the ticket.
+- `/ship:new-feature <ticket or description>` — solutions-architect (when the ticket is unclear, multi-platform, or non-trivial; it insists on understanding the infrastructure first, asking you for explicit read-only AWS access or a diagram if the repo doesn't tell it enough) → platform engineer(s) → qa-tester → tech-lead-reviewer, posting a sign-off on the ticket after every step. Ends in the ready-for-review state. Never closes the ticket.
 - `/ship:hotfix <ticket or bug>` — fast lane: reproduce, minimal fix, targeted tests, regression-focused review.
 - `/ship:projma [init | status]` — the file-based tracker. `init` scaffolds `docs/projma/`; `status` summarises open tickets.
 
 Agents. Read-only ones cannot edit code or touch the tracker.
 
 - `ship:ba-intake` — ticket drafts with a DoD checklist (read-only)
-- `ship:solutions-architect` — cross-platform shape of a ticket (read-only)
-- `ship:architect` — single-platform technical design (read-only)
-- `ship:front-end-swift-engineer` — iOS implementation
+- `ship:solutions-architect` — cross-platform shape and per-platform design notes; infrastructure-first (read-only, no cloud access of its own)
+- `ship:front-end-ios-engineer` — iOS implementation
 - `ship:front-end-android-engineer` — Android implementation
 - `ship:front-end-web-designer` — web UI/UX spec (writes the spec file only)
 - `ship:front-end-web-developer` — web implementation

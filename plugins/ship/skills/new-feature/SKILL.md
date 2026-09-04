@@ -1,5 +1,5 @@
 ---
-description: Implements a feature end to end across the relevant platform(s) - solutions-architect (if needed), architect, implementation, QA, tech-lead review
+description: Implements a feature end to end across the relevant platform(s) - solutions-architect (if needed), implementation, QA, tech-lead review
 argument-hint: [ticket ID or description]
 disable-model-invocation: true
 ---
@@ -25,22 +25,35 @@ the ticket first exactly as `/ship:new-ticket` would, so the sign-offs below
 have somewhere to live. Mark the ticket in progress (Linear status, or
 `in-progress` in `tasks.csv`).
 
-Figure out which platform(s) this touches: iOS (Swift), Android, web (design
-and/or development), backend, or a combination.
-- If it's unclear, or it plausibly spans more than one platform, invoke
-  `ship:solutions-architect` first and use its brief to decide what happens next.
-- If it's clearly single-platform and straightforward, skip `ship:solutions-architect`.
-
 You own every write to the ticket from here — no subagent has tracker
 access. After each subagent below finishes its step, post its output as an
 attributed sign-off comment on the ticket (a Linear comment, or an entry
 appended to the ticket file's Sign-off log in `docs/projma/`) before moving
 on. This is the paper trail; don't batch it into one summary at the end.
 
-For each platform involved, if the feature is non-trivial, invoke the
-`ship:architect` subagent (once per platform, if more than one) and wait for its
-design note before writing any code — post it as a sign-off comment. Skip
-this for small, well-understood changes.
+Figure out which platform(s) this touches: iOS (Swift), Android, web (design
+and/or development), backend, or a combination.
+- If it's unclear, plausibly spans more than one platform, or is non-trivial
+  on any single platform, invoke `ship:solutions-architect` and wait for its
+  brief and per-platform design note(s) before writing any code — post them
+  as a sign-off comment.
+- If it's clearly single-platform, small and well-understood, skip
+  `ship:solutions-architect`.
+
+`ship:solutions-architect` will not design against infrastructure it doesn't
+understand and has no cloud access of its own. If it comes back with a
+request for infrastructure context instead of a design, do this before
+re-invoking it:
+1. If an AWS MCP server is connected in this session, show the user the
+   exact read-only queries the architect asked for and ask for explicit
+   permission to run them read-only. Only on a clear yes, run those
+   describe/list/get operations yourself — never anything that creates,
+   modifies or deletes — and collect the results.
+2. If the user declines, or no AWS MCP server is connected, ask the user to
+   describe the infrastructure at a high level or to provide a diagram (an
+   image, a Mermaid/PlantUML file, or a link) and collect that instead.
+Re-invoke `ship:solutions-architect` with what you gathered, then post its
+brief and design note(s) as a sign-off comment.
 
 If new web UI is involved (not just wiring up existing components), invoke
 `ship:front-end-web-designer` first, post its spec as a sign-off comment, and hand
@@ -48,7 +61,7 @@ it to `ship:front-end-web-developer`.
 
 Implement using the matching specialist(s), posting each one's "what I
 changed" report as a sign-off comment as it finishes:
-- iOS → `ship:front-end-swift-engineer`
+- iOS → `ship:front-end-ios-engineer`
 - Android → `ship:front-end-android-engineer`
 - Web → `ship:front-end-web-developer`
 - Backend/API/data → `ship:backend-engineer`

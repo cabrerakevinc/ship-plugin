@@ -6,9 +6,8 @@ disable-model-invocation: true
 
 This is a hotfix for: $ARGUMENTS
 
-Skip `ship:solutions-architect` and `ship:architect`. Check for a CLAUDE.md at the project
-root for relevant conventions; if it's missing, note that and proceed
-carefully.
+Skip `ship:solutions-architect`. Check for a CLAUDE.md at the project root
+for relevant conventions; if it's missing, note that and proceed carefully.
 
 Resolve the tracker the same way `/ship:new-feature` does: Linear if its MCP
 tools are available and the root CLAUDE.md doesn't say otherwise; otherwise
@@ -20,7 +19,7 @@ progress.
 
 Identify which platform this touches (iOS, Android, web, backend) and
 reproduce the issue there first, ideally with a failing test. Apply the
-minimal fix with the matching specialist (`ship:front-end-swift-engineer`,
+minimal fix with the matching specialist (`ship:front-end-ios-engineer`,
 `ship:front-end-android-engineer`, `ship:front-end-web-developer`, or `ship:backend-engineer`) —
 no unrelated refactors. If the fix genuinely touches more than one platform,
 treat that as a signal this might not be a hotfix — flag it and ask before

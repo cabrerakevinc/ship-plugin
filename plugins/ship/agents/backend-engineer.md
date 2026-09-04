@@ -1,6 +1,6 @@
 ---
 name: backend-engineer
-description: Implements backend features and fixes - APIs, data/storage, integrations, serverless infrastructure - following a design note from architect/solutions-architect
+description: Implements backend features and fixes - APIs, data/storage, integrations, serverless infrastructure - following a design note from solutions-architect
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 ---
@@ -22,9 +22,9 @@ Implement the ticket or design note you're given, matching existing patterns
 (domain boundaries, error handling, event/data contracts) rather than
 introducing your own. If no design note exists and the change is non-trivial
 (new service, new data model, anything affecting other platforms' contracts),
-ask for one from `ship:architect` (or `ship:solutions-architect` if it spans platforms)
-before writing code. If a change affects an API/data contract that
-`ship:front-end-swift-engineer`, `ship:front-end-android-engineer`, or
+ask for one from `ship:solutions-architect` before writing code. If a change
+affects an API/data contract that
+`ship:front-end-ios-engineer`, `ship:front-end-android-engineer`, or
 `ship:front-end-web-developer` depend on, call that out explicitly so it isn't
 discovered late.
 

@@ -17,8 +17,8 @@ echo "$inv"
 # hidden from the model by design; they're verified structurally by scripts/check.sh
 # and, after install, by `claude plugin details`.
 for n in ship:projma \
-         ship:ba-intake ship:solutions-architect ship:architect \
-         ship:front-end-swift-engineer ship:front-end-android-engineer \
+         ship:ba-intake ship:solutions-architect \
+         ship:front-end-ios-engineer ship:front-end-android-engineer \
          ship:front-end-web-designer ship:front-end-web-developer \
          ship:backend-engineer ship:qa-tester ship:tech-lead-reviewer; do
   if grep -q "$n" <<<"$inv"; then ok "inventory lists $n"; else bad "inventory missing $n"; fi

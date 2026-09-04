@@ -1,6 +1,6 @@
 ---
 name: front-end-web-developer
-description: Implements web features and fixes, from a design spec (front-end-web-designer) and/or architecture note (architect/solutions-architect)
+description: Implements web features and fixes, from a design spec (front-end-web-designer) and/or architecture note (solutions-architect)
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 ---

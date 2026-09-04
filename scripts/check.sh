@@ -33,7 +33,7 @@ if claude plugin validate . >"$out" 2>&1; then ok "claude plugin validate . (mar
 rm -f "$out"
 
 # === agents ===
-AGENTS=(ba-intake solutions-architect architect front-end-swift-engineer front-end-android-engineer front-end-web-designer front-end-web-developer backend-engineer qa-tester tech-lead-reviewer)
+AGENTS=(ba-intake solutions-architect front-end-ios-engineer front-end-android-engineer front-end-web-designer front-end-web-developer backend-engineer qa-tester tech-lead-reviewer)
 for a in "${AGENTS[@]}"; do
   f="plugins/ship/agents/$a.md"
   need_file "$f" || continue
@@ -44,7 +44,7 @@ for a in "${AGENTS[@]}"; do
 done
 
 # No bare (unprefixed) agent name inside backticks anywhere in agent or skill bodies.
-BARE='`(ba-intake|solutions-architect|architect|front-end-swift-engineer|front-end-android-engineer|front-end-web-designer|front-end-web-developer|backend-engineer|qa-tester|tech-lead-reviewer)`'
+BARE='`(ba-intake|solutions-architect|architect|front-end-ios-engineer|front-end-swift-engineer|front-end-android-engineer|front-end-web-designer|front-end-web-developer|backend-engineer|qa-tester|tech-lead-reviewer)`'
 if [ -d plugins/ship/agents ] || [ -d plugins/ship/skills ]; then
   if grep -rnE "$BARE" plugins/ship/agents plugins/ship/skills 2>/dev/null; then
     bad "unprefixed agent references found above (must be ship:<name>)"
@@ -61,10 +61,9 @@ expect_refs() { # file agent count
 }
 A=plugins/ship/agents
 expect_refs $A/ba-intake.md tech-lead-reviewer 1
-expect_refs $A/solutions-architect.md architect 2
-expect_refs $A/architect.md solutions-architect 1
-for e in front-end-swift-engineer front-end-android-engineer; do
-  expect_refs $A/$e.md architect 1; expect_refs $A/$e.md solutions-architect 1
+if [ -f $A/solutions-architect.md ] && grep -q '`ship:' $A/solutions-architect.md; then bad "solutions-architect.md should reference no agents"; fi
+for e in front-end-ios-engineer front-end-android-engineer; do
+  expect_refs $A/$e.md solutions-architect 1
   expect_refs $A/$e.md qa-tester 1;  expect_refs $A/$e.md tech-lead-reviewer 1
 done
 expect_refs $A/front-end-web-designer.md front-end-web-developer 2
@@ -72,11 +71,18 @@ expect_refs $A/front-end-web-developer.md front-end-web-designer 1
 expect_refs $A/front-end-web-developer.md backend-engineer 1
 expect_refs $A/front-end-web-developer.md qa-tester 1
 expect_refs $A/front-end-web-developer.md tech-lead-reviewer 1
-for r in architect solutions-architect front-end-swift-engineer front-end-android-engineer front-end-web-developer qa-tester tech-lead-reviewer; do
+for r in solutions-architect front-end-ios-engineer front-end-android-engineer front-end-web-developer qa-tester tech-lead-reviewer; do
   expect_refs $A/backend-engineer.md $r 1
 done
 if [ -f $A/qa-tester.md ] && grep -q '`ship:' $A/qa-tester.md; then bad "qa-tester.md should reference no agents"; fi
 if [ -f $A/tech-lead-reviewer.md ] && grep -q '`ship:' $A/tech-lead-reviewer.md; then bad "tech-lead-reviewer.md should reference no agents"; fi
+[ -e $A/architect.md ] && bad "$A/architect.md must not exist (consolidated into solutions-architect)"
+[ -e $A/front-end-swift-engineer.md ] && bad "$A/front-end-swift-engineer.md must not exist (renamed front-end-ios-engineer)"
+if grep -rnE 'ship:architect`|front-end-swift-engineer' plugins/ship README.md 2>/dev/null; then
+  bad "stale references to retired agent names found above"
+else
+  ok "no references to retired agent names (architect, front-end-swift-engineer)"
+fi
 
 # === orchestrating skills ===
 S=plugins/ship/skills
@@ -92,17 +98,17 @@ for s in new-ticket new-feature hotfix; do
 done
 expect_refs $S/new-ticket/SKILL.md ba-intake 2
 expect_refs $S/new-ticket/SKILL.md projma 1
-expect_refs $S/new-feature/SKILL.md solutions-architect 3
-expect_refs $S/new-feature/SKILL.md architect 1
+expect_refs $S/new-feature/SKILL.md solutions-architect 5
 expect_refs $S/new-feature/SKILL.md front-end-web-designer 1
 expect_refs $S/new-feature/SKILL.md front-end-web-developer 2
-expect_refs $S/new-feature/SKILL.md front-end-swift-engineer 1
+expect_refs $S/new-feature/SKILL.md front-end-ios-engineer 1
 expect_refs $S/new-feature/SKILL.md front-end-android-engineer 1
 expect_refs $S/new-feature/SKILL.md backend-engineer 1
 expect_refs $S/new-feature/SKILL.md qa-tester 2
 expect_refs $S/new-feature/SKILL.md tech-lead-reviewer 2
 expect_refs $S/new-feature/SKILL.md projma 1
-for r in solutions-architect architect front-end-swift-engineer front-end-android-engineer front-end-web-developer backend-engineer qa-tester ba-intake projma; do
+grep -q 'read-only' $S/new-feature/SKILL.md 2>/dev/null || bad "$S/new-feature/SKILL.md must carry the read-only AWS permission protocol"
+for r in solutions-architect front-end-ios-engineer front-end-android-engineer front-end-web-developer backend-engineer qa-tester ba-intake projma; do
   expect_refs $S/hotfix/SKILL.md $r 1
 done
 expect_refs $S/hotfix/SKILL.md tech-lead-reviewer 2
