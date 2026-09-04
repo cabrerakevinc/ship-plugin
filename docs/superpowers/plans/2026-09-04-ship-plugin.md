@@ -632,7 +632,7 @@ MSG
 
 ```bash
 cat > README.md <<'EOF'
-# claude-plugins
+# ship-plugin
 
 KevTheDev's Claude Code plugin marketplace, named `kevthedev`. One repo, installable on any machine with `claude plugin ...`.
 
