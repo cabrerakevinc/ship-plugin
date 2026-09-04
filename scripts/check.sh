@@ -151,5 +151,15 @@ if [ -f $P/templates/CLAUDE.md ]; then
   done
 fi
 
+# === hooks ===
+H=plugins/ship/hooks
+for f in commit-convention.md session-start.sh; do need_file "$H/$f"; done
+ctx=$(CLAUDE_PLUGIN_ROOT="$PWD/plugins/ship" bash "$H/session-start.sh" 2>/dev/null)
+if python3 -c 'import json,sys; c=json.load(sys.stdin)["hookSpecificOutput"]; assert c["hookEventName"]=="SessionStart"; t=c["additionalContext"]; assert all(h in t for h in ("## What","## Why","## Risk")), t' <<<"$ctx" 2>/dev/null; then
+  ok "session-start.sh emits the convention as SessionStart additionalContext"
+else
+  bad "session-start.sh output is not the expected JSON"
+fi
+
 # === summary ===
 if [ "$fail" -eq 0 ]; then echo "ALL CHECKS PASSED"; else echo "CHECKS FAILED"; exit 1; fi
