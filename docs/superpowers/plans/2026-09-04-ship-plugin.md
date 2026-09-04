@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn this empty repo into a private Claude Code plugin marketplace (`kevthedev`) containing the `ship` plugin (10 agents, 4 skills, bundled Linear MCP), verified locally, pushed to a private GitHub repo, and installed from GitHub on this machine.
+**Goal:** Turn this repo into a Claude Code plugin marketplace (`kevthedev`) containing the `ship` plugin (10 agents, 4 skills, bundled Linear MCP), verified locally, pushed to the existing public GitHub repo `cabrerakevinc/ship-plugin`, and installed from GitHub on this machine.
 
 **Architecture:** One git repo is the marketplace: `.claude-plugin/marketplace.json` at the root points at `plugins/ship/`. The plugin is pure content (markdown agents and skills, three JSON manifests, three template files). Two shell scripts under `scripts/` are the test suite: `check.sh` does structural checks plus `claude plugin validate`, `smoke.sh` loads the plugin with `--plugin-dir` and exercises `/ship:projma` in a throwaway repo. `spec-diff.py` confirms each content file matches the spec appendix byte for byte.
 
@@ -13,6 +13,7 @@
 ## Global Constraints
 
 - Plugin name is `ship`; marketplace name is `kevthedev`; install target is `ship@kevthedev`.
+- Remote is the existing **public** repo `https://github.com/cabrerakevinc/ship-plugin` (already created, empty). Never run `gh repo create`.
 - Repo layout: marketplace root here, plugin at `plugins/ship/`. Only `plugin.json` goes inside `plugins/ship/.claude-plugin/`; `agents/`, `skills/`, `.mcp.json` sit at the plugin root.
 - `plugins/ship/.claude-plugin/plugin.json` has **no** `version` field (commit SHA is the version).
 - Every reference to another agent inside agent and skill bodies is written `ship:<agent>` (e.g. `` `ship:ba-intake` ``). No bare backticked agent name may remain.
@@ -162,7 +163,7 @@ cat > .claude-plugin/marketplace.json <<'EOF'
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "kevthedev",
-  "description": "KevTheDev's private Claude Code plugins",
+  "description": "KevTheDev's Claude Code plugins",
   "owner": {
     "name": "Kevin Cabrera",
     "url": "https://github.com/cabrerakevinc"
@@ -191,7 +192,7 @@ cat > plugins/ship/.claude-plugin/plugin.json <<'EOF'
     "name": "Kevin Cabrera",
     "url": "https://github.com/cabrerakevinc"
   },
-  "repository": "https://github.com/cabrerakevinc/claude-plugins",
+  "repository": "https://github.com/cabrerakevinc/ship-plugin",
   "keywords": ["agents", "workflow", "sdlc", "tickets", "linear"]
 }
 EOF
@@ -633,7 +634,7 @@ MSG
 cat > README.md <<'EOF'
 # claude-plugins
 
-KevTheDev's private Claude Code plugin marketplace, named `kevthedev`. One repo, installable on any machine with `claude plugin ...`.
+KevTheDev's Claude Code plugin marketplace, named `kevthedev`. One repo, installable on any machine with `claude plugin ...`.
 
 | Plugin | What it is |
 |---|---|
@@ -641,22 +642,16 @@ KevTheDev's private Claude Code plugin marketplace, named `kevthedev`. One repo,
 
 ## Install on a new machine
 
-Requires Claude Code and a GitHub login that can read this private repo (`gh auth login`, or an SSH key).
+Requires Claude Code. The repo is public, so no GitHub login is needed.
 
 ```
-claude plugin marketplace add cabrerakevinc/claude-plugins
+claude plugin marketplace add cabrerakevinc/ship-plugin
 claude plugin install ship@kevthedev
 ```
 
 Then, inside Claude Code, run `/mcp` once and complete the Linear login.
 
 Plugins are installed per config directory. If you use more than one profile (`CLAUDE_CONFIG_DIR`), repeat the two commands in each.
-
-If the HTTPS clone fails on a machine, add the marketplace with the SSH URL instead:
-
-```
-claude plugin marketplace add git@github.com:cabrerakevinc/claude-plugins.git
-```
 
 ## Update
 
@@ -719,7 +714,7 @@ EOF
 
 Run:
 ```bash
-grep -c 'claude plugin marketplace add cabrerakevinc/claude-plugins' README.md
+grep -c 'claude plugin marketplace add cabrerakevinc/ship-plugin' README.md
 grep -c 'claude plugin install ship@kevthedev' README.md
 grep -c 'claude plugin update ship@kevthedev' README.md
 scripts/check.sh | tail -1
@@ -740,14 +735,14 @@ MSG
 
 ---
 
-### Task 7: Publish privately and install from GitHub as the first consumer
+### Task 7: Push to GitHub and install from there as the first consumer
 
 **Files:**
-- None created. This task creates the remote repo, pushes, and installs into the current Claude profile (`CLAUDE_CONFIG_DIR` = `~/.claude-bevz`).
+- None created. This task pushes to the existing public repo and installs into the current Claude profile (`CLAUDE_CONFIG_DIR` = `~/.claude-bevz`).
 
 **Interfaces:**
 - Consumes: everything committed in Tasks 1–6 on `main`.
-- Produces: `https://github.com/cabrerakevinc/claude-plugins` (private); marketplace `kevthedev` and plugin `ship@kevthedev` installed at user scope.
+- Produces: `main` pushed to `https://github.com/cabrerakevinc/ship-plugin` (public); marketplace `kevthedev` and plugin `ship@kevthedev` installed at user scope.
 
 - [ ] **Step 1: Confirm the tree is clean and GitHub auth is in place**
 
@@ -758,23 +753,27 @@ gh auth status 2>&1 | grep -E 'Logged in|account'
 ```
 Expected: `0` (nothing uncommitted) and a line showing the `cabrerakevinc` account is logged in. If the tree is not clean, commit or discard before continuing.
 
-- [ ] **Step 2: Create the private repo and push**
+- [ ] **Step 2: Push to the existing public repo**
+
+The repo `cabrerakevinc/ship-plugin` already exists and is empty; do not create one.
 
 ```bash
-gh repo create cabrerakevinc/claude-plugins --private --description "KevTheDev's private Claude Code plugin marketplace" --source=. --remote=origin --push
-gh repo view cabrerakevinc/claude-plugins --json visibility,url,defaultBranchRef --jq '{visibility, url, branch: .defaultBranchRef.name}'
+gh repo view cabrerakevinc/ship-plugin --json visibility,isEmpty,url --jq '{visibility, isEmpty, url}'
+git remote add origin https://github.com/cabrerakevinc/ship-plugin.git
+git push -u origin main
+gh repo view cabrerakevinc/ship-plugin --json visibility,url,defaultBranchRef --jq '{visibility, url, branch: .defaultBranchRef.name}'
 ```
-Expected: `"visibility": "PRIVATE"`, the URL, and `main`. If `gh repo create` reports the repo already exists, run `git remote add origin https://github.com/cabrerakevinc/claude-plugins.git && git push -u origin main` and confirm visibility the same way.
+Expected before the push: `"visibility": "PUBLIC"`, `"isEmpty": true`. After: `"visibility": "PUBLIC"`, the URL, and `"branch": "main"`. If `isEmpty` is `false` before the push, stop and report what the remote already contains rather than pushing over it.
 
 - [ ] **Step 3: Add the marketplace from GitHub**
 
-Run: `claude plugin marketplace add cabrerakevinc/claude-plugins`
+Run: `claude plugin marketplace add cabrerakevinc/ship-plugin`
 Expected: success message naming the marketplace `kevthedev`. Then:
 
 Run: `claude plugin marketplace list`
 Expected: `kevthedev` appears with the GitHub source.
 
-If the add fails with an authentication or "repository not found" error, the HTTPS credential helper isn't serving a GitHub token. Run `gh auth setup-git` and retry; if it still fails, use the SSH form: `claude plugin marketplace add git@github.com:cabrerakevinc/claude-plugins.git`. Record which form worked in the final report so the README fallback note can be adjusted if needed.
+The repo is public, so no credentials are involved. If the add fails, the likely cause is that the push in Step 2 did not land or the manifest path is wrong; check `gh repo view cabrerakevinc/ship-plugin --json isEmpty` and that `.claude-plugin/marketplace.json` is at the repo root on `main`.
 
 - [ ] **Step 4: Install the plugin and confirm its inventory**
 
@@ -796,7 +795,7 @@ Expected: the install path is printed and `INSTALLED COPY MATCHES REPO`. (If `CL
 
 - [ ] **Step 6: Report the remaining manual step**
 
-Nothing to commit. Tell the user: open Claude Code, run `/mcp`, and complete the Linear login once for this profile. Repeat the two install commands in the `~/.claude` profile if the plugin is wanted there too.
+Nothing to commit. Tell the user: open Claude Code, run `/mcp`, and complete the Linear login once for this profile. Repeat the two install commands in the `~/.claude` profile if the plugin is wanted there too. Mention that the repo is public, so the design docs under `docs/superpowers/` are public as well.
 
 ---
 

@@ -1,4 +1,4 @@
-# `ship` plugin and `kevthedev` private marketplace — design
+# `ship` plugin and `kevthedev` marketplace — design
 
 **Date:** 2026-09-04
 **Status:** approved in conversation, pending written review
@@ -7,9 +7,9 @@
 ## 1. Purpose
 
 Package a role-based "virtual dev team" for Claude Code — ten subagents and
-three orchestrating skills — as an installable plugin, and distribute it
-privately so the same setup can be installed on every machine and Claude
-profile Kevin uses.
+four skills — as an installable plugin, and publish it so the same setup can
+be installed on every machine and Claude profile Kevin uses, and by anyone
+else who wants it.
 
 The agent and skill content was written by Kevin (see Appendix A). This
 design covers how it is packaged, hosted, installed, updated, and verified.
@@ -22,7 +22,7 @@ mechanical adaptation in section 5.
 |---|---|---|
 | Plugin name | `ship` | Short, reads as a verb (`/ship:new-feature`). Verified free in the official marketplace (291 plugins) and the superpowers marketplace. |
 | Marketplace name | `kevthedev` | Kevin's handle. Install target becomes `ship@kevthedev`. |
-| Hosting | Private GitHub repo `cabrerakevinc/claude-plugins` | Audience is Kevin only, across several machines and profiles. Personal account, not the TangoPay org. |
+| Hosting | Public GitHub repo `cabrerakevinc/ship-plugin` (created by Kevin on 2026-09-04) | Primary audience is Kevin across several machines and profiles; public so anyone interested can install it. Personal account, not the TangoPay org. |
 | Repo layout | Marketplace root with plugins under `plugins/<name>/` | Same shape as the official marketplace. Room for future plugins (e.g. folding in `nightcap-skills`) without restructuring. |
 | Linear MCP | Bundled in the plugin via `.mcp.json` | Registers automatically wherever the plugin is installed. Auth is a one-time `/mcp` login per machine. Can be toggled off per profile without uninstalling. |
 | Versioning | No `version` field; commit SHA is the version | Every push is an update; nothing to remember to bump. Same scheme the official `context7` plugin uses. |
@@ -32,7 +32,7 @@ mechanical adaptation in section 5.
 ## 3. Repository layout
 
 ```
-claude-plugins/                         git repo → github.com/cabrerakevinc/claude-plugins (private)
+claude-plugins/                         git repo → github.com/cabrerakevinc/ship-plugin (public)
 ├── .claude-plugin/
 │   └── marketplace.json                marketplace "kevthedev"
 ├── plugins/
@@ -79,7 +79,7 @@ the plugin and are reachable from the skill body as `${CLAUDE_SKILL_DIR}`.
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "kevthedev",
-  "description": "KevTheDev's private Claude Code plugins",
+  "description": "KevTheDev's Claude Code plugins",
   "owner": {
     "name": "Kevin Cabrera",
     "url": "https://github.com/cabrerakevinc"
@@ -105,7 +105,7 @@ the plugin and are reachable from the skill body as `${CLAUDE_SKILL_DIR}`.
     "name": "Kevin Cabrera",
     "url": "https://github.com/cabrerakevinc"
   },
-  "repository": "https://github.com/cabrerakevinc/claude-plugins",
+  "repository": "https://github.com/cabrerakevinc/ship-plugin",
   "keywords": ["agents", "workflow", "sdlc", "tickets", "linear"]
 }
 ```
@@ -272,10 +272,10 @@ automatically, but subagents never write to the tracker.
 
 `README.md` at the repo root covers:
 
-1. What this repo is (private marketplace, list of plugins).
+1. What this repo is (the `kevthedev` marketplace, list of plugins).
 2. Install on a new machine:
    ```
-   claude plugin marketplace add cabrerakevinc/claude-plugins
+   claude plugin marketplace add cabrerakevinc/ship-plugin
    claude plugin install ship@kevthedev
    ```
    then `/mcp` inside Claude Code to log in to Linear. Note that plugins are
@@ -294,16 +294,13 @@ automatically, but subagents never write to the tracker.
    `claude --plugin-dir plugins/ship`, `/reload-plugins`, commit, push.
 7. Adding another plugin: new folder under `plugins/`, one entry in
    `marketplace.json`.
-8. Authentication note: the marketplace clone uses the machine's normal git
-   credentials for GitHub (keychain/`gh` helper or SSH). If HTTPS fails on a
-   machine, add the marketplace with the SSH URL instead.
+8. No authentication is needed to install: the repo is public.
 
 ## 8. Install and update flow (behaviour)
 
-- `claude plugin marketplace add cabrerakevinc/claude-plugins` clones the
-  repo into the profile's `plugins/marketplaces/kevthedev/` using the
-  machine's git credentials. Private access works because Kevin is
-  authenticated to GitHub on each machine.
+- `claude plugin marketplace add cabrerakevinc/ship-plugin` clones the public
+  repo into the profile's `plugins/marketplaces/kevthedev/`. No credentials
+  are needed.
 - `claude plugin install ship@kevthedev` copies `plugins/ship` into the
   profile's plugin cache, keyed by commit SHA, and enables it at user scope.
   Skills appear as `/ship:*`, agents as `ship:*`, and the `linear` MCP
@@ -323,11 +320,11 @@ Done means all of the following are observed, not assumed:
    `--plugin-dir`) creates exactly `docs/projma/{CLAUDE.md,memory.md,tasks.csv,resources/.gitkeep}`
    with `{{DATE}}`/`{{PROJECT}}` substituted; running it again refuses to
    overwrite; `/ship:projma status` prints a summary and writes nothing.
-3. Repo is committed and pushed to a **private** GitHub repo
-   `cabrerakevinc/claude-plugins`; `gh repo view` confirms visibility is
-   private.
+3. Repo is committed and pushed to the existing GitHub repo
+   `cabrerakevinc/ship-plugin`; `gh repo view` confirms visibility is public
+   and the default branch is `main`.
 4. On this machine, as the first consumer:
-   `claude plugin marketplace add cabrerakevinc/claude-plugins` and
+   `claude plugin marketplace add cabrerakevinc/ship-plugin` and
    `claude plugin install ship@kevthedev` succeed, and `claude plugin list`
    shows `ship@kevthedev` enabled.
 5. Linear OAuth login (`/mcp`) is a manual step for Kevin and is documented,
