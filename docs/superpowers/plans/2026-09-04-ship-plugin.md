@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn this repo into a Claude Code plugin marketplace (`kevthedev`) containing the `ship` plugin (10 agents, 4 skills, bundled Linear MCP), verified locally, pushed to the existing public GitHub repo `cabrerakevinc/ship-plugin`, and installed from GitHub on this machine.
+**Goal:** Turn this repo into a Claude Code plugin marketplace (`kevthedev`) containing the `ship` plugin (9 agents after Task 8, 4 skills, bundled Linear MCP), verified locally, pushed to the existing public GitHub repo `cabrerakevinc/ship-plugin`, and installed from GitHub on this machine.
 
 **Architecture:** One git repo is the marketplace: `.claude-plugin/marketplace.json` at the root points at `plugins/ship/`. The plugin is pure content (markdown agents and skills, three JSON manifests, three template files). Two shell scripts under `scripts/` are the test suite: `check.sh` does structural checks plus `claude plugin validate`, `smoke.sh` loads the plugin with `--plugin-dir` and exercises `/ship:projma` in a throwaway repo. `spec-diff.py` confirms each content file matches the spec appendix byte for byte.
 
@@ -19,6 +19,7 @@
 - Every reference to another agent inside agent and skill bodies is written `ship:<agent>` (e.g. `` `ship:ba-intake` ``). No bare backticked agent name may remain.
 - Agent `name:` frontmatter stays bare (`name: ba-intake`), never `ship:ba-intake`.
 - Agents use `model: sonnet` and the `tools:` lists from the spec, verbatim.
+- After Task 8 there are nine agents: `architect` is gone (consolidated into `solutions-architect`) and `front-end-swift-engineer` is renamed `front-end-ios-engineer`. Tasks 1–7 were written before that amendment; Task 8 supersedes their agent lists.
 - `new-ticket`, `new-feature`, `hotfix` carry `disable-model-invocation: true`. `projma` does **not** (it must be model-invocable).
 - Content files are copied from the spec appendix exactly (verified by `scripts/spec-diff.py`); do not paraphrase or "improve" them.
 - Nothing in this repo writes to `~/.claude/` or `~/.claude-bevz/` directly; installation goes through `claude plugin ...`.
@@ -785,7 +786,7 @@ claude plugin install ship@kevthedev
 claude plugin list
 claude plugin details ship@kevthedev
 ```
-Expected: install succeeds at user scope; `claude plugin list` shows `ship@kevthedev` enabled; `claude plugin details ship@kevthedev` lists 4 skills (`new-ticket`, `new-feature`, `hotfix`, `projma`), 10 agents, and 1 MCP server (`linear`). If `details` does not accept the `@kevthedev` suffix, run `claude plugin details ship`.
+Expected: install succeeds at user scope; `claude plugin list` shows `ship@kevthedev` enabled; `claude plugin details ship@kevthedev` lists 4 skills (`new-ticket`, `new-feature`, `hotfix`, `projma`), 9 agents, and 1 MCP server (`linear`). If `details` does not accept the `@kevthedev` suffix, run `claude plugin details ship`.
 
 - [ ] **Step 5: Confirm the installed copy matches the repo**
 
@@ -801,6 +802,178 @@ Expected: the install path is printed and `INSTALLED COPY MATCHES REPO`. (If `CL
 Nothing to commit. Tell the user: open Claude Code, run `/mcp`, and complete the Linear login once for this profile. Repeat the two install commands in the `~/.claude` profile if the plugin is wanted there too. Mention that the repo is public, so the design docs under `docs/superpowers/` are public as well.
 
 ---
+
+---
+
+### Task 8: Consolidate the architect, add the infrastructure-first rule, rename the iOS engineer (amendment 2026-09-04)
+
+Kevin asked, after Tasks 1–6 were built, to (1) remove `architect` and fold its role into `solutions-architect`, (2) make `solutions-architect` establish a high-level picture of the infrastructure before designing — repo docs/IaC first, then AWS MCP **read-only** with the user's explicit permission (run by the orchestrating skill, since the architect has no MCP access), else a user-supplied description or diagram — and (3) rename `front-end-swift-engineer` to `front-end-ios-engineer`. The spec (§2, §5 amendment paragraph, Appendix A.2, A.3 removed, A.4, A.5, A.7, A.8, A.12, A.13) already carries the new content; this task makes the files match it.
+
+**Files:**
+- Delete: `plugins/ship/agents/architect.md`
+- Rename (git mv) then rewrite: `plugins/ship/agents/front-end-swift-engineer.md` → `plugins/ship/agents/front-end-ios-engineer.md` (spec A.4)
+- Rewrite from spec: `plugins/ship/agents/solutions-architect.md` (A.2), `plugins/ship/agents/front-end-android-engineer.md` (A.5), `plugins/ship/agents/front-end-web-developer.md` (A.7), `plugins/ship/agents/backend-engineer.md` (A.8), `plugins/ship/skills/new-feature/SKILL.md` (A.12), `plugins/ship/skills/hotfix/SKILL.md` (A.13)
+- Modify: `scripts/check.sh` (agents section and orchestrating-skills expectations)
+- Modify: `scripts/smoke.sh` (inventory list)
+- Modify: `README.md` (agent list and the `new-feature` flow line)
+
+**Interfaces:**
+- Consumes: `ok`/`bad`/`need_file`/`expect_refs` helpers in `scripts/check.sh`; spec Appendix A as the content source; `scripts/spec-diff.py`.
+- Produces: nine agents; `ship:solutions-architect` returns either a brief + per-platform design notes or an infrastructure-context request; `/ship:new-feature` handles that request with the explicit read-only permission protocol.
+
+- [ ] **Step 1: Update `scripts/check.sh` — agents section**
+
+Replace the `AGENTS=(...)` line with:
+
+```bash
+AGENTS=(ba-intake solutions-architect front-end-ios-engineer front-end-android-engineer front-end-web-designer front-end-web-developer backend-engineer qa-tester tech-lead-reviewer)
+```
+
+Replace the `BARE='...'` line with (retired names stay in the pattern so a bare backticked mention of them is still caught):
+
+```bash
+BARE='`(ba-intake|solutions-architect|architect|front-end-ios-engineer|front-end-swift-engineer|front-end-android-engineer|front-end-web-designer|front-end-web-developer|backend-engineer|qa-tester|tech-lead-reviewer)`'
+```
+
+Replace everything from the line `A=plugins/ship/agents` through the line `if [ -f $A/tech-lead-reviewer.md ] && grep -q '`ship:' $A/tech-lead-reviewer.md; then bad "tech-lead-reviewer.md should reference no agents"; fi` with:
+
+```bash
+A=plugins/ship/agents
+expect_refs $A/ba-intake.md tech-lead-reviewer 1
+if [ -f $A/solutions-architect.md ] && grep -q '`ship:' $A/solutions-architect.md; then bad "solutions-architect.md should reference no agents"; fi
+for e in front-end-ios-engineer front-end-android-engineer; do
+  expect_refs $A/$e.md solutions-architect 1
+  expect_refs $A/$e.md qa-tester 1;  expect_refs $A/$e.md tech-lead-reviewer 1
+done
+expect_refs $A/front-end-web-designer.md front-end-web-developer 2
+expect_refs $A/front-end-web-developer.md front-end-web-designer 1
+expect_refs $A/front-end-web-developer.md backend-engineer 1
+expect_refs $A/front-end-web-developer.md qa-tester 1
+expect_refs $A/front-end-web-developer.md tech-lead-reviewer 1
+for r in solutions-architect front-end-ios-engineer front-end-android-engineer front-end-web-developer qa-tester tech-lead-reviewer; do
+  expect_refs $A/backend-engineer.md $r 1
+done
+if [ -f $A/qa-tester.md ] && grep -q '`ship:' $A/qa-tester.md; then bad "qa-tester.md should reference no agents"; fi
+if [ -f $A/tech-lead-reviewer.md ] && grep -q '`ship:' $A/tech-lead-reviewer.md; then bad "tech-lead-reviewer.md should reference no agents"; fi
+[ -e $A/architect.md ] && bad "$A/architect.md must not exist (consolidated into solutions-architect)"
+[ -e $A/front-end-swift-engineer.md ] && bad "$A/front-end-swift-engineer.md must not exist (renamed front-end-ios-engineer)"
+if grep -rnE 'ship:architect`|front-end-swift-engineer' plugins/ship README.md 2>/dev/null; then
+  bad "stale references to retired agent names found above"
+else
+  ok "no references to retired agent names (architect, front-end-swift-engineer)"
+fi
+```
+
+- [ ] **Step 2: Update `scripts/check.sh` — orchestrating-skills expectations**
+
+Replace everything from the line `expect_refs $S/new-ticket/SKILL.md ba-intake 2` through the line `expect_refs $S/hotfix/SKILL.md tech-lead-reviewer 2` with:
+
+```bash
+expect_refs $S/new-ticket/SKILL.md ba-intake 2
+expect_refs $S/new-ticket/SKILL.md projma 1
+expect_refs $S/new-feature/SKILL.md solutions-architect 5
+expect_refs $S/new-feature/SKILL.md front-end-web-designer 1
+expect_refs $S/new-feature/SKILL.md front-end-web-developer 2
+expect_refs $S/new-feature/SKILL.md front-end-ios-engineer 1
+expect_refs $S/new-feature/SKILL.md front-end-android-engineer 1
+expect_refs $S/new-feature/SKILL.md backend-engineer 1
+expect_refs $S/new-feature/SKILL.md qa-tester 2
+expect_refs $S/new-feature/SKILL.md tech-lead-reviewer 2
+expect_refs $S/new-feature/SKILL.md projma 1
+grep -q 'read-only' $S/new-feature/SKILL.md 2>/dev/null || bad "$S/new-feature/SKILL.md must carry the read-only AWS permission protocol"
+for r in solutions-architect front-end-ios-engineer front-end-android-engineer front-end-web-developer backend-engineer qa-tester ba-intake projma; do
+  expect_refs $S/hotfix/SKILL.md $r 1
+done
+expect_refs $S/hotfix/SKILL.md tech-lead-reviewer 2
+```
+
+- [ ] **Step 3: Run the check script; expect failure**
+
+Run: `scripts/check.sh`
+Expected: `FAIL missing plugins/ship/agents/front-end-ios-engineer.md`, the two "must not exist" failures, the stale-references failure (listing lines in agents, skills and README), several `expected N ref(s)` failures, and `CHECKS FAILED`, exit 1.
+
+- [ ] **Step 4: Apply the content changes from the spec**
+
+```bash
+git rm -q plugins/ship/agents/architect.md
+git mv plugins/ship/agents/front-end-swift-engineer.md plugins/ship/agents/front-end-ios-engineer.md
+```
+
+Then rewrite each of these files with **exactly** the fenced block content from `docs/superpowers/specs/2026-09-04-ship-plugin-design.md` (quoted heredocs, single trailing newline):
+
+| File | Spec section |
+|---|---|
+| `plugins/ship/agents/solutions-architect.md` | A.2 |
+| `plugins/ship/agents/front-end-ios-engineer.md` | A.4 |
+| `plugins/ship/agents/front-end-android-engineer.md` | A.5 |
+| `plugins/ship/agents/front-end-web-developer.md` | A.7 |
+| `plugins/ship/agents/backend-engineer.md` | A.8 |
+| `plugins/ship/skills/new-feature/SKILL.md` | A.12 |
+| `plugins/ship/skills/hotfix/SKILL.md` | A.13 |
+
+- [ ] **Step 5: Update `scripts/smoke.sh`**
+
+Replace the `for n in ship:projma \` … `ship:backend-engineer ship:qa-tester ship:tech-lead-reviewer; do` list so it reads:
+
+```bash
+for n in ship:projma \
+         ship:ba-intake ship:solutions-architect \
+         ship:front-end-ios-engineer ship:front-end-android-engineer \
+         ship:front-end-web-designer ship:front-end-web-developer \
+         ship:backend-engineer ship:qa-tester ship:tech-lead-reviewer; do
+```
+
+Nothing else in `smoke.sh` changes.
+
+- [ ] **Step 6: Update `README.md`**
+
+Replace the `/ship:new-feature` bullet with:
+
+```
+- `/ship:new-feature <ticket or description>` — solutions-architect (when the ticket is unclear, multi-platform, or non-trivial; it insists on understanding the infrastructure first, asking you for explicit read-only AWS access or a diagram if the repo doesn't tell it enough) → platform engineer(s) → qa-tester → tech-lead-reviewer, posting a sign-off on the ticket after every step. Ends in the ready-for-review state. Never closes the ticket.
+```
+
+Replace the agent list (the ten `- \`ship:...\`` lines) with these nine:
+
+```
+- `ship:ba-intake` — ticket drafts with a DoD checklist (read-only)
+- `ship:solutions-architect` — cross-platform shape and per-platform design notes; infrastructure-first (read-only, no cloud access of its own)
+- `ship:front-end-ios-engineer` — iOS implementation
+- `ship:front-end-android-engineer` — Android implementation
+- `ship:front-end-web-designer` — web UI/UX spec (writes the spec file only)
+- `ship:front-end-web-developer` — web implementation
+- `ship:backend-engineer` — backend implementation
+- `ship:qa-tester` — runs and writes tests, never edits production code
+- `ship:tech-lead-reviewer` — item-by-item DoD review (read-only)
+```
+
+- [ ] **Step 7: Verify fidelity, structure and behaviour**
+
+Run:
+```bash
+scripts/spec-diff.py plugins/ship/agents/solutions-architect.md plugins/ship/agents/front-end-ios-engineer.md plugins/ship/agents/front-end-android-engineer.md plugins/ship/agents/front-end-web-developer.md plugins/ship/agents/backend-engineer.md plugins/ship/skills/new-feature/SKILL.md plugins/ship/skills/hotfix/SKILL.md
+scripts/check.sh
+scripts/smoke.sh
+```
+Expected: seven `match:` lines; `ALL CHECKS PASSED`; `SMOKE PASSED` with ten `inventory lists` ok lines (projma + nine agents) and section 2 unchanged (15 ok). A linear `WARN` is acceptable.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add -A plugins/ship scripts/check.sh scripts/smoke.sh README.md
+git commit -m "$(cat <<'MSG'
+Consolidate architect into solutions-architect, add infrastructure-first rule, rename iOS engineer
+
+solutions-architect now owns both the cross-platform brief and the per-platform
+design notes, and must understand the infrastructure before designing: repo
+docs/IaC first, then AWS MCP read-only with the user's explicit permission (run
+by the orchestrating skill), else a user-supplied description or diagram.
+front-end-swift-engineer is renamed front-end-ios-engineer.
+
+Created by KevTheDev
+MSG
+)"
+```
 
 ## Self-review notes
 
