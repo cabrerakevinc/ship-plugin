@@ -26,7 +26,8 @@ mechanical adaptation in section 5.
 | Repo layout | Marketplace root with plugins under `plugins/<name>/` | Same shape as the official marketplace. Room for future plugins (e.g. folding in `nightcap-skills`) without restructuring. |
 | Linear MCP | Bundled in the plugin via `.mcp.json` | Registers automatically wherever the plugin is installed. Auth is a one-time `/mcp` login per machine. Can be toggled off per profile without uninstalling. |
 | Versioning | No `version` field; commit SHA is the version | Every push is an update; nothing to remember to bump. Same scheme the official `context7` plugin uses. |
-| Skill names | `new-ticket`, `new-feature`, `hotfix` | As written in Kevin's plan. |
+| Skill names | `new-ticket`, `new-feature`, `hotfix`, plus `projma` | The first three as written in Kevin's plan; `projma` added for the file tracker (section 6). |
+| Ticket tracker fallback | Standard file tracker at `docs/projma/` in the target repo, created only after the user says yes | Replaces the plan's "ask which format every time" with a default shape, without scaffolding into someone's repo silently. |
 
 ## 3. Repository layout
 
@@ -53,7 +54,13 @@ claude-plugins/                         git repo → github.com/cabrerakevinc/cl
 │       └── skills/
 │           ├── new-ticket/SKILL.md
 │           ├── new-feature/SKILL.md
-│           └── hotfix/SKILL.md
+│           ├── hotfix/SKILL.md
+│           └── projma/
+│               ├── SKILL.md            /ship:projma — init or status; model-invocable so the other skills can call it
+│               └── templates/
+│                   ├── CLAUDE.md       tracker conventions, copied to docs/projma/CLAUDE.md
+│                   ├── memory.md       copied to docs/projma/memory.md
+│                   └── tasks.csv       header row only, copied to docs/projma/tasks.csv
 ├── docs/superpowers/specs/             design docs (this file)
 ├── README.md
 └── .gitignore
@@ -61,6 +68,8 @@ claude-plugins/                         git repo → github.com/cabrerakevinc/cl
 
 Only `plugin.json` lives inside `.claude-plugin/`. `agents/`, `skills/`, and
 `.mcp.json` sit at the plugin root; Claude Code auto-discovers them there.
+Supporting files next to a `SKILL.md` (here `projma/templates/`) ship with
+the plugin and are reachable from the skill body as `${CLAUDE_SKILL_DIR}`.
 
 ## 4. Manifests
 
@@ -151,18 +160,115 @@ Complete list of references changed (all become `ship:<name>`):
 | `agents/backend-engineer.md` | architect, solutions-architect, front-end-swift-engineer, front-end-android-engineer, front-end-web-developer, qa-tester, tech-lead-reviewer |
 | `agents/qa-tester.md` | none |
 | `agents/tech-lead-reviewer.md` | none |
-| `skills/new-ticket/SKILL.md` | ba-intake (×2) |
-| `skills/new-feature/SKILL.md` | solutions-architect (×3), architect, front-end-web-designer, front-end-web-developer (×2), front-end-swift-engineer, front-end-android-engineer, backend-engineer, qa-tester (×2), tech-lead-reviewer (×2) |
-| `skills/hotfix/SKILL.md` | solutions-architect, architect, front-end-swift-engineer, front-end-android-engineer, front-end-web-developer, backend-engineer, qa-tester, tech-lead-reviewer (×2), ba-intake |
+| `skills/new-ticket/SKILL.md` | ba-intake (×2), projma |
+| `skills/new-feature/SKILL.md` | solutions-architect (×3), architect, front-end-web-designer, front-end-web-developer (×2), front-end-swift-engineer, front-end-android-engineer, backend-engineer, qa-tester (×2), tech-lead-reviewer (×2), projma |
+| `skills/hotfix/SKILL.md` | solutions-architect, architect, front-end-swift-engineer, front-end-android-engineer, front-end-web-developer, backend-engineer, qa-tester, tech-lead-reviewer (×2), ba-intake, projma |
 
 Skill `description:` lines are human-facing summaries and are left as
 written.
+
+**Wording changes beyond the prefix (skills only, agents untouched).** The
+three orchestrating skills gain the tracker-resolution rule from section 6
+and name the file tracker where the plan said "wherever the user prefers to
+track it". Two small behavioural additions come with that, both flagged
+here so they are deliberate:
+
+- `new-feature` and `hotfix`: if the argument is a description rather than a
+  ticket ID, create the ticket first exactly as `/ship:new-ticket` would, so
+  the sign-off paper trail has somewhere to live. The plan implied a ticket
+  exists but did not say what to do when it doesn't.
+- `new-feature` and `hotfix`: when finishing on the file tracker, append one
+  to three terse bullets of durable learnings to `docs/projma/memory.md`.
 
 The plan's rule "if these files already exist, show a diff and ask" is moot:
 the plugin is built in an empty directory, and installation never writes
 into `~/.claude/agents/` or `~/.claude/skills/`.
 
-## 6. README
+## 6. Fallback ticket tracker (`docs/projma/`)
+
+When Linear isn't connected, the skills use a standard file tracker in the
+target repo instead of asking which format to use each time.
+
+### 6.1 Tracker resolution rule (identical in all three orchestrating skills)
+
+1. **Linear**, if its MCP tools are available and the project's root
+   `CLAUDE.md` doesn't say otherwise.
+2. Otherwise **`docs/projma/`**, if it exists. Read `docs/projma/CLAUDE.md`
+   first and follow it.
+3. Otherwise **ask the user once** whether to create the standard tracker
+   (by invoking the `ship:projma` skill with `init`) or to use something
+   else. Never create it without a yes.
+
+### 6.2 Layout created in the target repo
+
+```
+docs/projma/
+├── CLAUDE.md        how this tracker works; auto-loaded by Claude Code when files here are read
+├── memory.md        durable project context learned across tickets
+├── tasks.csv        the index; the only place a ticket's status lives
+└── resources/
+    ├── .gitkeep
+    ├── T-001-dark-mode-toggle.md   one file per ticket: problem, scope, DoD, sign-off log
+    └── ...                          plus any reference material tickets point at
+```
+
+### 6.3 File rules (the full text is the template in A.15)
+
+- **`tasks.csv`** header: `id,title,type,platforms,status,created,updated,file`.
+  IDs `T-001`, `T-002`, … zero-padded; next = highest + 1. `type` ∈ feature,
+  bug, hotfix, chore. `platforms` is a `;`-separated subset of
+  ios, android, web, backend, or `tbd`. `status` ∈ `todo`, `in-progress`,
+  `in-review`, `closed`. Dates `YYYY-MM-DD`. `file` is relative to
+  `docs/projma/`. RFC 4180 quoting. Rows are never reordered or deleted.
+- **Statuses:** `in-review` is the "ready for the user's final check" state
+  the skills move to. `closed` is set only by the user, never by automation
+  — this is the plan's rule, made concrete.
+- **Ticket file** `resources/<id>-<slug>.md`: header lines (type, platforms,
+  created), then `## Problem`, `## Scope`, `## Definition of Done` (checkbox
+  list from `ship:ba-intake`), `## Sign-off log`. Every ticket gets a file,
+  not only long ones. Status is deliberately **not** recorded in the file;
+  `tasks.csv` is the single source of truth.
+- **Sign-off log:** one entry per agent step, appended newest-last, headed
+  `### <YYYY-MM-DD HH:MM> — <agent name>`, holding the agent's report.
+  Earlier entries are never edited. This is the file-tracker equivalent of
+  the Linear comment trail.
+- **DoD boxes** are ticked only when `ship:tech-lead-reviewer` confirms the
+  item.
+- **`memory.md`:** read before starting `new-feature`/`hotfix`; one to three
+  terse bullets appended under a dated heading when one finishes. Decisions,
+  conventions discovered, gotchas. Not a log; prune when stale.
+- **Who writes:** only the main session (the orchestrating skills or the
+  user). Subagents remain read-only, as in the plan.
+
+### 6.4 The `ship:projma` skill
+
+- `argument-hint: [init | status]`. Unlike the other three skills it is
+  **model-invocable** (no `disable-model-invocation`), so `new-ticket`,
+  `new-feature` and `hotfix` can invoke it with `init` after the user agrees.
+  Its description is narrow enough that Claude won't fire it unprompted.
+- **`init`:** if `docs/projma/` exists, say so and stop (never overwrite).
+  Otherwise copy `${CLAUDE_SKILL_DIR}/templates/{CLAUDE.md,memory.md,tasks.csv}`
+  into `docs/projma/`, create `resources/.gitkeep`, replace `{{DATE}}` with
+  today's date and `{{PROJECT}}` with the repo folder name, then list what was
+  created and remind the user to commit.
+- **`status` or no argument:** if the tracker is missing, say so and offer
+  `init` without running it. Otherwise read `tasks.csv` and print counts by
+  status plus the non-closed tickets (id, title, status, platforms),
+  `in-review` first. No writes.
+
+### 6.5 Ground-rule amendments
+
+- Ground rule 1 gains the word **root**: no agent writes a project's root
+  `CLAUDE.md`. `docs/projma/CLAUDE.md` is a tracker-scoped file created only
+  after the user says yes to scaffolding.
+- Ground rule 3 becomes: if Linear isn't available, fall back to the standard
+  `docs/projma/` tracker, asking once before creating it.
+
+Verified: Claude Code auto-loads a nested `CLAUDE.md` when a file in that
+folder is read from the main session, by any method. Subagents don't get it
+automatically, but subagents never write to the tracker.
+
+## 7. README
 
 `README.md` at the repo root covers:
 
@@ -180,9 +286,10 @@ into `~/.claude/agents/` or `~/.claude/skills/`.
    claude plugin update ship@kevthedev
    ```
    or via the `/plugin` UI.
-4. What `ship` provides: the three commands and ten agents, one line each.
-5. Linear is optional: how to toggle it off in `/mcp`, and that the agents
-   fall back to asking how to track tickets.
+4. What `ship` provides: the four commands and ten agents, one line each.
+5. Linear is optional: how to toggle it off in `/mcp`, and that the skills
+   fall back to the `docs/projma/` file tracker (short description, link to
+   the template `CLAUDE.md`).
 6. Developing: edit, `claude plugin validate plugins/ship`, test with
    `claude --plugin-dir plugins/ship`, `/reload-plugins`, commit, push.
 7. Adding another plugin: new folder under `plugins/`, one entry in
@@ -191,7 +298,7 @@ into `~/.claude/agents/` or `~/.claude/skills/`.
    credentials for GitHub (keychain/`gh` helper or SSH). If HTTPS fails on a
    machine, add the marketplace with the SSH URL instead.
 
-## 7. Install and update flow (behaviour)
+## 8. Install and update flow (behaviour)
 
 - `claude plugin marketplace add cabrerakevinc/claude-plugins` clones the
   repo into the profile's `plugins/marketplaces/kevthedev/` using the
@@ -204,14 +311,18 @@ into `~/.claude/agents/` or `~/.claude/skills/`.
 - `claude plugin marketplace update kevthedev` pulls the repo;
   `claude plugin update ship@kevthedev` re-installs at the new SHA.
 
-## 8. Verification
+## 9. Verification
 
 Done means all of the following are observed, not assumed:
 
 1. `claude plugin validate plugins/ship` passes.
 2. A non-interactive run with `claude --plugin-dir plugins/ship -p ...` lists
-   all three `ship:` skills, all ten `ship:` agents, and the `linear` MCP
+   all four `ship:` skills, all ten `ship:` agents, and the `linear` MCP
    server as available.
+2a. In a throwaway git repo, `/ship:projma init` (run non-interactively with
+   `--plugin-dir`) creates exactly `docs/projma/{CLAUDE.md,memory.md,tasks.csv,resources/.gitkeep}`
+   with `{{DATE}}`/`{{PROJECT}}` substituted; running it again refuses to
+   overwrite; `/ship:projma status` prints a summary and writes nothing.
 3. Repo is committed and pushed to a **private** GitHub repo
    `cabrerakevinc/claude-plugins`; `gh repo view` confirms visibility is
    private.
@@ -222,19 +333,21 @@ Done means all of the following are observed, not assumed:
 5. Linear OAuth login (`/mcp`) is a manual step for Kevin and is documented,
    not automated.
 
-## 9. Out of scope
+## 10. Out of scope
 
 - Migrating `nightcap-skills` into this marketplace (possible later as a
   second plugin).
 - Any repo-level `CLAUDE.md` or project configuration.
 - Hooks, commands, LSP servers.
-- Changing the behaviour or wording of the agents and skills beyond the
-  `ship:` prefix.
+- Changing the agents' behaviour or wording beyond the `ship:` prefix.
+  Skill wording changes are limited to those listed in sections 5 and 6.
+- A `/ship:projma` board view beyond the plain status summary; editing or
+  closing tickets from the skill; syncing the file tracker to Linear.
 
-## 10. Testing approach
+## 11. Testing approach
 
 There is no executable code in this plugin; tests are the verification
-steps in section 8. Content correctness is checked by a scripted grep that
+steps in section 9. Content correctness is checked by a scripted grep that
 asserts no unprefixed agent reference remains in any agent or skill body
 (every occurrence of an agent name inside backticks or after "invoke"/
 "delegate to" carries the `ship:` prefix).
@@ -620,10 +733,20 @@ Delegate to the `ship:ba-intake` subagent to draft the ticket: title, problem
 statement, scope, platform(s) if apparent, and a Definition of Done checklist.
 `ship:ba-intake` never touches the tracker — you do.
 
-Create the actual ticket yourself from that draft: in Linear if available
-(ask which team/project if CLAUDE.md doesn't specify one), otherwise wherever
-the user prefers to track it (ask if unclear). Include the DoD checklist in
-the ticket body.
+Create the actual ticket yourself from that draft. Resolve the tracker in
+this order:
+
+1. Linear, if its MCP tools are available and the project's root CLAUDE.md
+   doesn't say otherwise (ask which team/project if CLAUDE.md doesn't
+   specify one).
+2. Otherwise the file tracker at `docs/projma/`, if it exists: read
+   `docs/projma/CLAUDE.md` and follow it — add a row to `tasks.csv` with
+   status `todo` and create the ticket file under `resources/`.
+3. Otherwise ask the user once whether to create the standard `docs/projma/`
+   tracker (invoke the `ship:projma` skill with `init`, then proceed as in
+   step 2) or to use something else. Never create it without a yes.
+
+Include the DoD checklist in the ticket body.
 
 Report back the ticket ID or tracker reference and the DoD checklist.
 ```
@@ -644,9 +767,19 @@ it's missing, tell the user and suggest running the native `/init` command
 first — proceed carefully and ask for context rather than assuming
 conventions.
 
+Resolve the tracker: Linear if its MCP tools are available and the root
+CLAUDE.md doesn't say otherwise; otherwise `docs/projma/` if it exists (read
+`docs/projma/CLAUDE.md` and follow it, and read `docs/projma/memory.md` for
+context before starting); otherwise ask the user once whether to create the
+standard tracker (invoke the `ship:projma` skill with `init`) or use
+something else — never create it without a yes.
+
 If this refers to a ticket ID, fetch its full spec and Definition of Done
-checklist (from Linear if that's how this repo tracks tickets, otherwise from
-wherever this repo keeps them).
+checklist (from Linear, or from the ticket's file under
+`docs/projma/resources/`). If it's a description with no ticket yet, create
+the ticket first exactly as `/ship:new-ticket` would, so the sign-offs below
+have somewhere to live. Mark the ticket in progress (Linear status, or
+`in-progress` in `tasks.csv`).
 
 Figure out which platform(s) this touches: iOS (Swift), Android, web (design
 and/or development), backend, or a combination.
@@ -656,9 +789,9 @@ and/or development), backend, or a combination.
 
 You own every write to the ticket from here — no subagent has tracker
 access. After each subagent below finishes its step, post its output as an
-attributed sign-off comment on the ticket (or append it to the fallback
-tracker's log) before moving on. This is the paper trail; don't batch it
-into one summary at the end.
+attributed sign-off comment on the ticket (a Linear comment, or an entry
+appended to the ticket file's Sign-off log in `docs/projma/`) before moving
+on. This is the paper trail; don't batch it into one summary at the end.
 
 For each platform involved, if the feature is non-trivial, invoke the
 `ship:architect` subagent (once per platform, if more than one) and wait for its
@@ -690,8 +823,11 @@ changed.
 Don't finish until `ship:qa-tester` and `ship:tech-lead-reviewer` are satisfied against
 every item on the Definition of Done, across every platform touched. Once
 they are, move the ticket to whatever this tracker calls its pre-closed,
-ready-for-review state (e.g. "Done," "In Review," or reassigning it to the
-user — check CLAUDE.md or ask if it isn't obvious) and tell the user clearly
+ready-for-review state — in Linear, e.g. "Done," "In Review," or reassigning
+it to the user (check CLAUDE.md or ask if it isn't obvious); in
+`docs/projma/`, status `in-review` in `tasks.csv`, with the confirmed DoD
+items ticked in the ticket file and one to three terse bullets of durable
+learnings appended to `docs/projma/memory.md` — and tell the user clearly
 that it's ready for their final check. Never set the ticket to "Closed" (or
 your tracker's equivalent) yourself — that's the user's call alone.
 ```
@@ -711,6 +847,14 @@ Skip `ship:solutions-architect` and `ship:architect`. Check for a CLAUDE.md at t
 root for relevant conventions; if it's missing, note that and proceed
 carefully.
 
+Resolve the tracker the same way `/ship:new-feature` does: Linear if its MCP
+tools are available and the root CLAUDE.md doesn't say otherwise; otherwise
+`docs/projma/` if it exists (read `docs/projma/CLAUDE.md` and follow it);
+otherwise ask the user once before creating it with the `ship:projma` skill
+(`init`). If there's no ticket yet for this bug, create one first exactly as
+`/ship:new-ticket` would, so the sign-offs have somewhere to live. Mark it in
+progress.
+
 Identify which platform this touches (iOS, Android, web, backend) and
 reproduce the issue there first, ideally with a failing test. Apply the
 minimal fix with the matching specialist (`ship:front-end-swift-engineer`,
@@ -720,8 +864,9 @@ treat that as a signal this might not be a hotfix — flag it and ask before
 proceeding.
 
 You own every write to the ticket — no subagent has tracker access. Post
-each subagent's output as an attributed sign-off comment as soon as it
-finishes.
+each subagent's output as an attributed sign-off comment (a Linear comment,
+or an entry appended to the ticket file's Sign-off log in `docs/projma/`) as
+soon as it finishes.
 
 Invoke `ship:qa-tester` scoped to the relevant tests only, post its report as a
 sign-off comment. Invoke `ship:tech-lead-reviewer` for a quick regression-focused
@@ -731,10 +876,165 @@ and post its verdict as a sign-off comment.
 
 If the fix is a workaround rather than a root-cause fix, use the `ship:ba-intake`
 subagent to draft a follow-up ticket, and create it yourself (Linear, or
-whatever this repo uses for tracking) before finishing.
+`docs/projma/`) before finishing.
 
 Once `ship:tech-lead-reviewer` is satisfied, move the ticket to whatever this
-tracker calls its pre-closed, ready-for-review state and tell the user it's
-ready for their final check. Never mark it "Closed" (or equivalent)
-yourself.
+tracker calls its pre-closed, ready-for-review state (`in-review` in
+`tasks.csv` for `docs/projma/`, with one to three terse bullets of durable
+learnings appended to `docs/projma/memory.md`) and tell the user it's ready
+for their final check. Never mark it "Closed" (or equivalent) yourself.
+```
+
+### A.14 `plugins/ship/skills/projma/SKILL.md`
+
+```markdown
+---
+name: projma
+description: File-based ticket tracker at docs/projma/ (tasks.csv index, one file per ticket with DoD checklist and sign-off log, memory.md). `init` scaffolds it; `status` or no argument summarises open tickets. Invoked by ship:new-ticket, ship:new-feature and ship:hotfix when Linear isn't available.
+argument-hint: [init | status]
+---
+
+Argument: $ARGUMENTS
+
+The tracker root is `docs/projma/`, relative to the project root. The
+conventions live in `docs/projma/CLAUDE.md` once it exists; the pristine copy
+is `${CLAUDE_SKILL_DIR}/templates/CLAUDE.md`.
+
+## `init`
+
+1. If `docs/projma/` already exists, say so and stop. Never overwrite an
+   existing tracker.
+2. Otherwise create `docs/projma/` and `docs/projma/resources/`, then copy
+   `${CLAUDE_SKILL_DIR}/templates/CLAUDE.md`, `memory.md` and `tasks.csv`
+   into `docs/projma/`, and create an empty `docs/projma/resources/.gitkeep`.
+3. In the copied `CLAUDE.md` and `memory.md`, replace `{{DATE}}` with today's
+   date (`YYYY-MM-DD`) and `{{PROJECT}}` with the project root folder name.
+4. List the files created and remind the user to commit them. Make no other
+   changes.
+
+When another ship skill invokes you with `init`, the user has already agreed
+to create the tracker; don't ask again.
+
+## `status` (or no argument)
+
+- If `docs/projma/` doesn't exist, say so and offer to run `init`. Don't
+  create anything without a yes.
+- Otherwise read `docs/projma/tasks.csv` and print: a one-line count per
+  status, then every non-`closed` ticket as `id — title (status; platforms)`,
+  `in-review` first, then `in-progress`, then `todo`. Write nothing.
+
+Anything else as an argument: say the valid arguments are `init` and
+`status`.
+```
+
+### A.15 `plugins/ship/skills/projma/templates/CLAUDE.md`
+
+````markdown
+# Project tracker (`docs/projma/`)
+
+File-based ticket tracker for {{PROJECT}}, used when Linear isn't connected.
+Scaffolded by the `ship` Claude Code plugin (`/ship:projma init`) on {{DATE}}.
+
+## Files
+
+- `tasks.csv` — the index, one row per ticket. The **only** place a ticket's
+  status lives.
+- `resources/<id>-<slug>.md` — one file per ticket: problem, scope,
+  Definition of Done, sign-off log. Also holds any reference material
+  (specs, exports, screenshots) that tickets link to.
+- `memory.md` — durable project context learned across tickets. Read it
+  before starting work; append to it after finishing.
+
+## tasks.csv
+
+Header: `id,title,type,platforms,status,created,updated,file`
+
+- `id` — `T-001`, `T-002`, … zero-padded to three digits. Next id = highest
+  existing + 1.
+- `title` — short. Long text belongs in the ticket file.
+- `type` — `feature` | `bug` | `hotfix` | `chore`.
+- `platforms` — `;`-separated subset of `ios`, `android`, `web`, `backend`,
+  or `tbd` if not yet known.
+- `status` — `todo` | `in-progress` | `in-review` | `closed`.
+- `created`, `updated` — `YYYY-MM-DD`. Update `updated` on every change.
+- `file` — path relative to this folder, e.g.
+  `resources/T-001-dark-mode-toggle.md`.
+
+Rules: RFC 4180 quoting (wrap a field in double quotes if it contains a
+comma, a double quote or a newline; double any quotes inside). Never reorder
+or delete rows.
+
+## Statuses
+
+- `todo` — created, not started.
+- `in-progress` — being worked on.
+- `in-review` — implemented, QA and tech-lead review passed; waiting for the
+  user's final check.
+- `closed` — set **only by the user**, after their own final check (merge,
+  deploy). Automation never sets this.
+
+## Ticket file
+
+Every ticket gets a file, even a short one. Status is **not** recorded in
+the file; `tasks.csv` is the source of truth.
+
+```
+# T-001 — Add dark mode toggle
+
+- Type: feature
+- Platforms: ios, web
+- Created: 2026-09-04
+
+## Problem
+
+## Scope
+
+## Definition of Done
+
+- [ ] …
+
+## Sign-off log
+
+### 2026-09-04 14:02 — ship:ba-intake
+
+…
+```
+
+- **Sign-off log:** append one entry per agent step, newest last, headed
+  `### <YYYY-MM-DD HH:MM> — <agent name>`, containing that agent's report.
+  Never edit earlier entries. This is the equivalent of the Linear comment
+  trail.
+- **Definition of Done:** tick a box only when `ship:tech-lead-reviewer` has
+  confirmed that item.
+
+## memory.md
+
+Append one to three terse bullets per finished ticket under a dated
+heading: decisions made, conventions discovered, gotchas. It is not a log —
+consolidate or prune stale entries when you notice them.
+
+## Who writes here
+
+Only the main session (the orchestrating `ship` skills, or the user).
+Subagents are read-only.
+````
+
+### A.16 `plugins/ship/skills/projma/templates/memory.md`
+
+```markdown
+# Project memory — {{PROJECT}}
+
+Durable context that outlives a single ticket: decisions, conventions,
+gotchas. Read this before starting a ticket. Append one to three terse
+bullets when one finishes. Keep it short; prune what's stale.
+
+## {{DATE}} — tracker created
+
+- Scaffolded with `/ship:projma init`.
+```
+
+### A.17 `plugins/ship/skills/projma/templates/tasks.csv`
+
+```csv
+id,title,type,platforms,status,created,updated,file
 ```
