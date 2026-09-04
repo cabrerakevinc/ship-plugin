@@ -78,5 +78,34 @@ done
 if [ -f $A/qa-tester.md ] && grep -q '`ship:' $A/qa-tester.md; then bad "qa-tester.md should reference no agents"; fi
 if [ -f $A/tech-lead-reviewer.md ] && grep -q '`ship:' $A/tech-lead-reviewer.md; then bad "tech-lead-reviewer.md should reference no agents"; fi
 
+# === orchestrating skills ===
+S=plugins/ship/skills
+for s in new-ticket new-feature hotfix; do
+  f="$S/$s/SKILL.md"
+  need_file "$f" || continue
+  grep -q '^disable-model-invocation: true$' "$f" || bad "$f: disable-model-invocation: true missing"
+  grep -q '^argument-hint: ' "$f"                || bad "$f: argument-hint missing"
+  grep -q '^description: ' "$f"                  || bad "$f: description missing"
+  grep -q '\$ARGUMENTS' "$f"                     || bad "$f: \$ARGUMENTS missing"
+  grep -q 'docs/projma/' "$f"                    || bad "$f: must mention the docs/projma/ fallback"
+  grep -q '^name: ' "$f"                         && bad "$f: no name field (folder name is the skill name)"
+done
+expect_refs $S/new-ticket/SKILL.md ba-intake 2
+expect_refs $S/new-ticket/SKILL.md projma 1
+expect_refs $S/new-feature/SKILL.md solutions-architect 3
+expect_refs $S/new-feature/SKILL.md architect 1
+expect_refs $S/new-feature/SKILL.md front-end-web-designer 1
+expect_refs $S/new-feature/SKILL.md front-end-web-developer 2
+expect_refs $S/new-feature/SKILL.md front-end-swift-engineer 1
+expect_refs $S/new-feature/SKILL.md front-end-android-engineer 1
+expect_refs $S/new-feature/SKILL.md backend-engineer 1
+expect_refs $S/new-feature/SKILL.md qa-tester 2
+expect_refs $S/new-feature/SKILL.md tech-lead-reviewer 2
+expect_refs $S/new-feature/SKILL.md projma 1
+for r in solutions-architect architect front-end-swift-engineer front-end-android-engineer front-end-web-developer backend-engineer qa-tester ba-intake projma; do
+  expect_refs $S/hotfix/SKILL.md $r 1
+done
+expect_refs $S/hotfix/SKILL.md tech-lead-reviewer 2
+
 # === summary ===
 if [ "$fail" -eq 0 ]; then echo "ALL CHECKS PASSED"; else echo "CHECKS FAILED"; exit 1; fi
