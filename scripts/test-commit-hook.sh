@@ -287,7 +287,7 @@ CMD
 t "one-line message" 2 'missing "## What"' <<'CMD'
 git commit -m "feat: add thing"
 CMD
-t "rejection prints the convention" 2 "## Risk" <<'CMD'
+t "rejection prints the convention" 2 "Commit message convention" <<'CMD'
 git commit -m "feat: add thing"
 CMD
 

@@ -329,7 +329,7 @@ the script (JSON built with python so escaping is right). Matrix:
 | One-line `-m "feat: add thing"` | 2, `missing "## What"` |
 | `-F /nonexistent` | 2, `could not be read` |
 | `-m "$(git log -1 --format=%s)"` | 2, `could not be read` |
-| Rejection stderr | contains `## Risk` (the convention was printed) |
+| Rejection stderr | contains `Commit message convention` (the convention itself was printed; `## Risk` also appears in a problem line, so it proves nothing) |
 
 **Structural: `scripts/check.sh`, new `# === hooks ===` section.**
 
@@ -337,7 +337,7 @@ the script (JSON built with python so escaping is right). Matrix:
   `SessionStart` entry with matcher `startup|clear|compact` and a
   `PreToolUse` entry with matcher `Bash`; every `command` names a file
   that exists once `${CLAUDE_PLUGIN_ROOT}` is replaced by `plugins/ship`.
-- `python3 -m py_compile hooks/check-commit-msg.py` succeeds.
+- `hooks/check-commit-msg.py` parses under `ast.parse` (`py_compile` would write `__pycache__` under `plugins/ship/`).
 - `session-start.sh` output parses as JSON and its `additionalContext`
   contains `## What`, `## Why`, `## Risk`.
 - `scripts/test-commit-hook.sh` passes.
