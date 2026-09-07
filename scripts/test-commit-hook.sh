@@ -20,7 +20,8 @@ payload() {
 # run <name> <expected-exit> [stderr-substring]: payload JSON on stdin.
 run() {
   local name=$1 want=$2 needle=${3:-} err got
-  err=$(bash "$HOOK" 2>&1 >/dev/null); got=$?
+  err=$(bash "$HOOK" 2>&1 >"$TMP/stdout"); got=$?
+  if [ -s "$TMP/stdout" ]; then bad "$name: hook wrote to stdout"; head -3 "$TMP/stdout"; return; fi
   if [ "$got" != "$want" ]; then bad "$name: exit $got, expected $want"; [ -n "$err" ] && printf '%s\n' "$err" | head -5; return; fi
   if [ -n "$needle" ] && ! grep -qF -- "$needle" <<<"$err"; then bad "$name: stderr lacks '$needle'"; printf '%s\n' "$err" | head -8; return; fi
   ok "$name"
@@ -369,6 +370,163 @@ git commit -F $TMP/bad.txt
 CMD
 t "message from an unquoted shell variable" 2 "could not be read" <<'CMD'
 git commit -m $MSG
+CMD
+
+echo "=== masking and argument forms ==="
+t "opener nested in a python heredoc does not mask the commit" 2 "subject: must be" <<'CMD'
+python3 - <<'PY'
+x = 1 << 2
+print(x)
+PY
+git commit -m "bad"
+CMD
+t "unterminated cat <<EOF quoted inside a doc heredoc does not mask the commit" 2 "subject: must be" <<'CMD'
+cat > notes.md <<'DOC'
+Example: cat <<EOF
+hello
+DOC
+git commit -m "bad"
+CMD
+t "terminated heredoc then a bad commit" 2 "subject: must be" <<'CMD'
+cat > plan.md <<'EOF'
+Then commit.
+EOF
+git commit -m "bad"
+CMD
+t "terminated heredoc then a good commit" 0 <<'CMD'
+cat > plan.md <<'EOF'
+Then commit.
+EOF
+git commit -m "$(cat <<'MSG'
+docs: add the plan
+
+## What
+
+Adds plan.md.
+
+## Why
+
+- We need a plan.
+
+## Risk
+
+None. Docs only.
+MSG
+)"
+CMD
+t "valid via attached -m" 0 <<'CMD'
+git commit -m"$(cat <<'EOF'
+feat: attach the message
+
+## What
+
+Attached form.
+
+## Why
+
+- Coverage.
+
+## Risk
+
+None.
+EOF
+)"
+CMD
+t "valid via --message=" 0 <<'CMD'
+git commit --message="$(cat <<'EOF'
+feat: use the long form
+
+## What
+
+Long form.
+
+## Why
+
+- Coverage.
+
+## Risk
+
+None.
+EOF
+)"
+CMD
+t "valid via -am" 0 <<'CMD'
+git commit -am "$(cat <<'EOF'
+feat: stage and commit
+
+## What
+
+Both at once.
+
+## Why
+
+- Coverage.
+
+## Risk
+
+None.
+EOF
+)"
+CMD
+t "valid via unquoted cat heredoc tag" 0 <<'CMD'
+git commit -m "$(cat <<EOF
+feat: unquoted tag
+
+## What
+
+Unquoted tag.
+
+## Why
+
+- Coverage.
+
+## Risk
+
+None.
+EOF
+)"
+CMD
+t "two invocations: first reported" 2 'got "one"' <<'CMD'
+git commit -m "one" ; git commit -m "two"
+CMD
+t "two invocations: second reported" 2 'got "two"' <<'CMD'
+git commit -m "one" ; git commit -m "two"
+CMD
+t "valid after a ; separator" 0 <<'CMD'
+git status; git commit -m "$(cat <<'EOF'
+chore: after a semicolon
+
+## What
+
+Semicolon.
+
+## Why
+
+- Coverage.
+
+## Risk
+
+None.
+EOF
+)"
+CMD
+t "valid inside a subshell" 0 <<'CMD'
+(cd sub && git commit -m "$(cat <<'EOF'
+chore: in a subshell
+
+## What
+
+Subshell.
+
+## Why
+
+- Coverage.
+
+## Risk
+
+None.
+EOF
+)")
 CMD
 
 if [ "$fail" -eq 0 ]; then echo "HOOK TESTS PASSED"; else echo "HOOK TESTS FAILED"; exit 1; fi

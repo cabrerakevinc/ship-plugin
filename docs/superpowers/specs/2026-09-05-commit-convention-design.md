@@ -254,7 +254,9 @@ Heredoc masking: before matching, find every heredoc opener
 `<<-?\s*(['"]?)(\w+)\1` in the command in order; its body runs from the
 start of the next line to the line that equals the delimiter (leading tabs
 stripped if `<<-`), or to the end of the command if none. Matches whose
-`git` falls inside a body whose opener precedes it are dropped. A commit's
+`git` falls inside a body whose opener precedes it are dropped. An opener
+that itself lies inside an earlier body is content, not an opener, and is
+skipped. A commit's
 own message heredoc (`-m "$(cat <<'EOF'`) opens *after* `git commit`, so it
 never masks its own invocation. This is what lets the model write a plan
 file containing example commit commands without the hook judging them.
@@ -274,8 +276,8 @@ quoted string do not end the command). Tokens:
 - `-m X`, `-mX`, `--message X`, `--message=X`: collect in order; the
   message is the parts joined by a blank line (git's behaviour).
 - `-F X`, `--file X`, `--file=X`: `-` → *could not be read*; otherwise the
-  path, relative to the payload's `cwd`, is read if it exists, else *could
-  not be read*.
+  path, relative to the payload's `cwd`, is read if it is a regular file,
+  else *could not be read*.
 - Options the hook does not judge (§4.5) → skip this invocation.
 - Neither `-m`/`--message` nor `-F`/`--file` → skip (git will open an
   editor or fail on its own).
@@ -319,12 +321,18 @@ the script (JSON built with python so escaping is right). Matrix:
 | `git commit --amend --no-edit -m "oops"` | 2, `subject: must be` |
 | `-F` file containing a bad message | 2, `subject: must be` |
 | `-m $MSG` (unquoted shell variable) | 2, `could not be read` |
+| A `<<` nested inside an earlier heredoc body (`1 << 2` in an embedded script; an unterminated `cat <<EOF` quoted in a doc), then a bad commit | 2, `subject: must be` |
+| Terminated heredoc, then a bad commit / then a good commit | 2 / 0 |
+| `-mX`, `--message=X`, `-am X`, unquoted `$(cat <<EOF` | 0 |
+| Two invocations separated by `;` | 2, both messages' problems listed |
+| Valid commit after `;` and inside `( … )` | 0 |
+| Every case | nothing on stdout |
 | `git commit --fixup HEAD~1` | 0 |
 | `git commit` (no message) | 0 |
 | stdin not JSON | 0 |
 | `tool_name: Read` with a command-like field | 0 |
 | `git commit -m "Final review fixes: README note"` | 2, `subject: must be` |
-| Subject 80 characters | 2, `limit is 72` |
+| Subject 82 characters | 2, `limit is 72` |
 | Subject ending in `.` | 2, `trailing period` |
 | No blank line after subject | 2, `line 2 must be blank` |
 | Missing `## Risk` | 2, `missing "## Risk"` |
@@ -397,10 +405,18 @@ report `match:`.
   not needed on Kevin's machines.
 - Commits made through tools other than Bash (there are none).
 - Quote-aware heredoc detection. `HEREDOC_RE` (§5.1) is quote- and
-  arithmetic-blind: a `<<` inside quotes or `$(( ))` that has no matching
-  terminator line masks everything after it, so a `git commit` later in the
-  same command goes unchecked. Fail-open, contrived, and left as a known
-  limitation; the fix is a quote-tracking scanner.
+  arithmetic-blind: a `<<` inside quotes or `$(( ))` on a bare command line
+  that has no matching terminator masks everything after it, so a
+  `git commit` later in the same command goes unchecked. A `<<` nested
+  inside another heredoc's body is skipped, so embedded scripts and quoted
+  examples are safe. Fail-open, contrived, and left as a known limitation;
+  the fix is a quote-tracking scanner.
+- Command-position bypasses. `VAR=x git commit`, `command git commit`,
+  `\git commit` and a line-continued `git \` + `commit` are not detected by
+  §5.1's regex; all fail open and none is a form a model writes.
+- `-F -` with a heredoc on stdin is treated as unreadable (§5.2) although
+  the heredoc is visible in the command; the rejection points at the
+  `-m "$(cat <<'EOF' … EOF)"` idiom instead.
 
 ---
 

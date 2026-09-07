@@ -74,9 +74,9 @@ Without Linear, the skills use `docs/projma/` in the target repo: `tasks.csv` (t
 ## Developing
 
 ```
-scripts/check.sh    # structural checks + claude plugin validate
-scripts/smoke.sh    # functional test: a few Claude calls, throwaway repo
-scripts/test-commit-hook.sh    # fixture tests for the commit-message hook
+scripts/check.sh                    # structural checks + claude plugin validate
+scripts/smoke.sh                    # functional test: a few Claude calls, throwaway repo
+scripts/test-commit-hook.sh         # fixture tests for the commit-message hook
 claude --plugin-dir plugins/ship    # try it in a real session without installing
 ```
 

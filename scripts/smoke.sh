@@ -68,7 +68,7 @@ done
 echo "smoke" >"$SCRATCH/smoke.txt"; git -C "$SCRATCH" add smoke.txt
 out=$(grun 'Run exactly this command, unchanged: git commit -m "bad message". If it is blocked or fails, do not retry and do not change the message; report the outcome in one sentence.'); echo "$out"
 if [ "$(git -C "$SCRATCH" rev-list --count HEAD 2>/dev/null || echo 0)" = "0" ]; then ok "PreToolUse hook blocked the bad commit"; else bad "a commit was made despite the bad message"; fi
-if grep -qiE 'convention|reject|blocked' <<<"$out"; then ok "model reported the rejection"; else warn "model's report did not mention the rejection"; fi
+if grep -qiE 'hook|commit message rejected|ship commit convention' <<<"$out"; then ok "model reported the rejection"; else warn "model's report did not mention the rejection"; fi
 
 out=$(grun 'Commit the already-staged file smoke.txt with a message that follows the commit message convention from your session-start notes; use type chore. Do not push.'); echo "$out"
 if [ "$(git -C "$SCRATCH" rev-list --count HEAD 2>/dev/null || echo 0)" = "1" ]; then ok "conforming commit landed"; else bad "expected exactly one commit after the conforming attempt"; fi

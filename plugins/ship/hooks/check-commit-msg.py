@@ -74,6 +74,8 @@ def masked_ranges(text):
     """Character ranges that are heredoc bodies: file content, not commands."""
     ranges = []
     for m in HEREDOC_RE.finditer(text):
+        if any(a <= m.start() < b for a, b in ranges):
+            continue  # an opener inside an earlier heredoc's body is content
         nl = text.find("\n", m.end())
         if nl == -1:
             continue
@@ -217,6 +219,8 @@ def message_from(tokens, cwd):
         if not readable or text == "-":
             raise Unreadable()
         path = text if os.path.isabs(text) else os.path.join(cwd, text)
+        if not os.path.isfile(path):
+            raise Unreadable()  # missing, a directory, a FIFO or a device
         try:
             with open(path, encoding="utf-8", errors="replace") as fh:
                 texts.append(fh.read())
