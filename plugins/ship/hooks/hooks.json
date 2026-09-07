@@ -1,0 +1,17 @@
+{
+  "description": "ship commit convention: hands the model a commit message note at session start (a project's own conventions come first; a default shape for repos that have none)",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

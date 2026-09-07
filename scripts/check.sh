@@ -113,14 +113,28 @@ expect_refs $S/new-feature/SKILL.md front-end-web-developer 2
 expect_refs $S/new-feature/SKILL.md front-end-ios-engineer 1
 expect_refs $S/new-feature/SKILL.md front-end-android-engineer 1
 expect_refs $S/new-feature/SKILL.md backend-engineer 1
-expect_refs $S/new-feature/SKILL.md qa-tester 2
-expect_refs $S/new-feature/SKILL.md tech-lead-reviewer 2
+expect_refs $S/new-feature/SKILL.md qa-tester 3
+expect_refs $S/new-feature/SKILL.md tech-lead-reviewer 3
 expect_refs $S/new-feature/SKILL.md projma 1
 grep -q 'read-only' $S/new-feature/SKILL.md 2>/dev/null || bad "$S/new-feature/SKILL.md must carry the read-only AWS permission protocol"
-for r in solutions-architect front-end-ios-engineer front-end-android-engineer front-end-web-developer backend-engineer qa-tester ba-intake projma; do
+for r in solutions-architect front-end-ios-engineer front-end-android-engineer front-end-web-developer backend-engineer ba-intake projma; do
   expect_refs $S/hotfix/SKILL.md $r 1
 done
-expect_refs $S/hotfix/SKILL.md tech-lead-reviewer 2
+expect_refs $S/hotfix/SKILL.md qa-tester 2
+expect_refs $S/hotfix/SKILL.md tech-lead-reviewer 3
+
+# Final commit step (spec 2026-09-05 §4.6): stage by name, message from the staged diff, never push.
+for s in new-feature hotfix; do
+  f="$S/$s/SKILL.md"; [ -f "$f" ] || continue
+  for must in 'git status' 'git diff --staged' '## What' '## Why' '## Risk' 'Never `git add -A`' 'short SHA'; do
+    grep -qF -- "$must" "$f" || bad "$f: commit step must mention '$must'"
+  done
+  if grep -q 'git push' "$f"; then bad "$f: must not mention git push"; else ok "$f: commit step present, no git push"; fi
+done
+for a in front-end-ios-engineer front-end-android-engineer front-end-web-developer backend-engineer; do
+  f="$A/$a.md"; [ -f "$f" ] || continue
+  if grep -q "Don't commit, branch or" "$f"; then ok "$f: tells the agent not to commit"; else bad "$f: missing the don't-commit line"; fi
+done
 
 # === projma ===
 P=plugins/ship/skills/projma
@@ -150,6 +164,35 @@ if [ -f $P/templates/CLAUDE.md ]; then
     grep -qF -- "$must" $P/templates/CLAUDE.md || bad "$P/templates/CLAUDE.md: missing '$must'"
   done
 fi
+
+# === hooks ===
+H=plugins/ship/hooks
+for f in commit-convention.md session-start.sh; do need_file "$H/$f"; done
+ctx=$(CLAUDE_PLUGIN_ROOT="$PWD/plugins/ship" bash "$H/session-start.sh" 2>/dev/null)
+if python3 -c 'import json,sys; c=json.load(sys.stdin)["hookSpecificOutput"]; assert c["hookEventName"]=="SessionStart"; t=c["additionalContext"]; assert all(h in t for h in ("own conventions come first","## What","## Why","## Risk")), t' <<<"$ctx" 2>/dev/null; then
+  ok "session-start.sh emits the note (project first, then the default shape) as SessionStart additionalContext"
+else
+  bad "session-start.sh output is not the expected JSON"
+fi
+for gone in check-commit.sh check-commit-msg.py; do [ -e "$H/$gone" ] && bad "$H/$gone must not exist: the convention is guidance only, nothing rejects a commit"; done
+[ -e scripts/test-commit-hook.sh ] && bad "scripts/test-commit-hook.sh must not exist (the enforcing hook was withdrawn)"
+
+need_file "$H/hooks.json"
+if python3 - <<'PY'
+import json, os, re
+h = json.load(open('plugins/ship/hooks/hooks.json'))['hooks']
+assert 'PreToolUse' not in h, "no enforcing hook: the convention is guidance only"
+ss = h['SessionStart']
+assert len(ss) == 1 and ss[0]['matcher'] == 'startup|clear|compact', ss
+for ev in ss:
+    for hk in ev['hooks']:
+        assert hk['type'] == 'command' and hk.get('timeout') == 10 and not hk.get('async'), hk
+        paths = re.findall(r'\$\{CLAUDE_PLUGIN_ROOT\}(/\S+?)"', hk['command'])
+        assert paths, hk['command']
+        for p in paths:
+            assert os.path.isfile('plugins/ship' + p), p
+PY
+then ok "hooks.json registers only SessionStart(startup|clear|compact), with an existing script"; else bad "hooks.json does not match the spec"; fi
 
 # === summary ===
 if [ "$fail" -eq 0 ]; then echo "ALL CHECKS PASSED"; else echo "CHECKS FAILED"; exit 1; fi

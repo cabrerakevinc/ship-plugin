@@ -53,4 +53,21 @@ status=$(run "/ship:projma status"); echo "$status"
 if [ "$before" = "$(hashes)" ]; then ok "status wrote nothing"; else bad "status modified files"; fi
 if grep -qiE 'todo|in-progress|in-review|no .*tickets|0' <<<"$status"; then ok "status printed a summary"; else bad "status output unexpected"; fi
 
+echo "=== 3. hooks ==="
+git -C "$SCRATCH" config user.email smoke@example.com
+git -C "$SCRATCH" config user.name smoke
+GITALLOW="$ALLOW,Bash(git commit:*),Bash(git log:*),Bash(git status:*),Bash(git diff:*)"
+grun() { (cd "$SCRATCH" && claude --plugin-dir "$PLUGIN" -p "$1" --output-format text --permission-mode acceptEdits --allowedTools "$GITALLOW" 2>/dev/null); }
+
+hdr=$(run "According to the commit message note you were given at session start, which three '##' sections does the default shape use for a repository that has no commit convention of its own? Output only the three headers, one per line, nothing else.")
+echo "$hdr"
+for w in What Why Risk; do
+  if grep -q "$w" <<<"$hdr"; then ok "session-start hook: model knows section $w"; else bad "session-start hook: '$w' missing from the model's answer"; fi
+done
+
+echo "smoke" >"$SCRATCH/smoke.txt"; git -C "$SCRATCH" add smoke.txt
+out=$(grun 'This repository has no commit convention of its own. Commit the already-staged file smoke.txt following the default shape from the commit message note in your session-start notes; use type chore. Do not push.'); echo "$out"
+if [ "$(git -C "$SCRATCH" rev-list --count HEAD 2>/dev/null || echo 0)" = "1" ]; then ok "conforming commit landed"; else bad "expected exactly one commit after the conforming attempt"; fi
+if git -C "$SCRATCH" log -1 --format=%B 2>/dev/null | grep -q '^## Risk'; then ok "commit body has ## Risk"; else bad "commit body lacks ## Risk"; fi
+
 if [ "$fail" -eq 0 ]; then echo "SMOKE PASSED"; else echo "SMOKE FAILED"; exit 1; fi

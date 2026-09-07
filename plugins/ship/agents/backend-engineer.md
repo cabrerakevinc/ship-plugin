@@ -34,4 +34,5 @@ confidently, stop and ask rather than guessing.
 When done, report what you changed, including any contract changes other
 platforms need to know about, and flag anything `ship:qa-tester` or
 `ship:tech-lead-reviewer` should pay particular attention to (backward
-compatibility, cost/scaling implications, security).
+compatibility, cost/scaling implications, security). Don't commit, branch or
+push — the calling skill commits once at the end.

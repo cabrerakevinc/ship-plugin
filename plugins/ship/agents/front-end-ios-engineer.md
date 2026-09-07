@@ -26,4 +26,5 @@ implement confidently, stop and ask rather than guessing.
 
 When done, report what you changed and flag anything `ship:qa-tester` or
 `ship:tech-lead-reviewer` should pay particular attention to (device/OS version
-considerations, App Store review implications).
+considerations, App Store review implications). Don't commit, branch or
+push — the calling skill commits once at the end.

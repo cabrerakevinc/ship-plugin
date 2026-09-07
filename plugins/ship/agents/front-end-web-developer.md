@@ -29,4 +29,5 @@ confidently, stop and ask rather than guessing.
 
 When done, report what you changed and flag anything `ship:qa-tester` or
 `ship:tech-lead-reviewer` should pay particular attention to (browser/device
-support, performance).
+support, performance). Don't commit, branch or push — the calling skill
+commits once at the end.
