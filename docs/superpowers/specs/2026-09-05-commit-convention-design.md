@@ -267,8 +267,8 @@ quoted string do not end the command). Tokens:
 - Inside `"…"`, a `$(cat <<'TAG'` / `$(cat <<TAG` / `$(cat <<"TAG"` opener
   means the message is the heredoc body (lines after the opener up to the
   `TAG` line), regardless of what follows the closing `)`.
-- Any other `$(` or backtick inside a message argument → *could not be
-  read*.
+- Any other `$(`, a backtick, or a `$NAME` / `${NAME}` expansion inside a
+  message argument → *could not be read*.
 - `-m X`, `-mX`, `--message X`, `--message=X`: collect in order; the
   message is the parts joined by a blank line (git's behaviour).
 - `-F X`, `--file X`, `--file=X`: `-` → *could not be read*; otherwise the
@@ -329,6 +329,7 @@ the script (JSON built with python so escaping is right). Matrix:
 | One-line `-m "feat: add thing"` | 2, `missing "## What"` |
 | `-F /nonexistent` | 2, `could not be read` |
 | `-m "$(git log -1 --format=%s)"` | 2, `could not be read` |
+| `-m "$MSG"` (a shell variable) | 2, `could not be read` |
 | Rejection stderr | contains `Commit message convention` (the convention itself was printed; `## Risk` also appears in a problem line, so it proves nothing) |
 
 **Structural: `scripts/check.sh`, new `# === hooks ===` section.**

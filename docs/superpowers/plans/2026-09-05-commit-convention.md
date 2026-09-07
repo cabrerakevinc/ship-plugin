@@ -906,12 +906,12 @@ EOF
 ### Task 4: Checker hardening — heredoc masking, `-F`, skips, unreadable messages
 
 **Files:**
-- Modify: `plugins/ship/hooks/check-commit-msg.py` — replace `find_invocations`, `message_from`, `main`; add `HEREDOC_RE`, `UNREADABLE`, `SKIP_LONG`, `masked_ranges`
+- Modify: `plugins/ship/hooks/check-commit-msg.py` — replace `find_invocations`, `message_from`, `main`; add `HEREDOC_RE`, `UNREADABLE`, `SKIP_LONG`, `masked_ranges`; extend `tokenize` so a `$NAME`/`${NAME}` expansion marks its token unreadable (Task 3 review ruling)
 - Modify: `scripts/test-commit-hook.sh` — add a fixture section before the final PASSED/FAILED line
 
 **Interfaces:**
 - Consumes: Task 3's module.
-- Produces: final checker behaviour per spec §5. `message_from(tokens, cwd)` now takes `cwd` and may raise `Unreadable`; `find_invocations` ignores heredoc bodies.
+- Produces: final checker behaviour per spec §5. `message_from(tokens, cwd)` now takes `cwd` and may raise `Unreadable`; `find_invocations` ignores heredoc bodies; `tokenize` marks `$NAME`/`${NAME}` expansions unreadable.
 
 - [ ] **Step 1: Add the fixtures**
 
@@ -960,6 +960,9 @@ CMD
 t "message from backticks" 2 "could not be read" <<'CMD'
 git commit -m "`date`"
 CMD
+t "message from a shell variable" 2 "could not be read" <<'CMD'
+git commit -m "$MSG"
+CMD
 t "-c reuses a message" 0 <<'CMD'
 git commit -c HEAD~1
 CMD
@@ -990,13 +993,14 @@ CMD
 - [ ] **Step 2: Run the harness to see the new cases fail**
 
 Run: `scripts/test-commit-hook.sh 2>&1 | grep -E '^FAIL|PASSED|FAILED'`
-Expected FAIL lines, exactly these six:
+Expected FAIL lines, exactly these seven:
 - `git commit inside a heredoc being written to a file: exit 2, expected 0`
 - `body line starting with git commit is not an invocation: exit 2, expected 0`
 - `-F file that does not exist: exit 0, expected 2`
 - `-F - (stdin): exit 0, expected 2`
 - `message from command substitution: stderr lacks 'could not be read'` (it is rejected, but for the wrong reason)
 - `message from backticks: stderr lacks 'could not be read'`
+- `message from a shell variable: stderr lacks 'could not be read'` (validated as the literal text `$MSG`, so rejected for the wrong reason)
 and `HOOK TESTS FAILED`. ("valid via -F file" passes already because Task 3 ignores `-F` entirely; that changes below.)
 
 - [ ] **Step 3: Add heredoc masking**
@@ -1135,10 +1139,30 @@ def main():
     return 2
 ```
 
+- [ ] **Step 5b: Make `tokenize` treat shell variables as unreadable**
+
+Task 3's review found that `git commit -m "$MSG"` was validated as the literal text `$MSG` and rejected with a misleading subject error. The hook cannot see the variable's value, so the honest answer is the same as for `$(...)`: unreadable, block with the heredoc guidance. In `tokenize`, inside the double-quote loop, directly after the `elif command.startswith("$(", pos):` branch (the one that ends with `pos = close + 1`) and before `elif c == "`":`, add:
+
+```python
+                    elif c == "$" and pos + 1 < n and (command[pos + 1].isalnum() or command[pos + 1] in "_{@*#?!$-"):
+                        readable = False
+                        pos += 1
+```
+
+And in the unquoted branch, directly after the `elif command.startswith("$(", pos):` branch (the one that calls `skip_substitution`) and before `elif ch == "`":`, add:
+
+```python
+            elif ch == "$" and pos + 1 < n and (command[pos + 1].isalnum() or command[pos + 1] in "_{@*#?!$-"):
+                readable = False
+                pos += 1
+```
+
+The `$` is consumed and the name characters after it are collected as ordinary text; the token is flagged unreadable, and `message_from` (Step 4) turns that into `Unreadable` → `could not be read`. A `$` followed by a space, a quote, or the end of the string stays literal, as in bash.
+
 - [ ] **Step 6: Run the harness and `check.sh`**
 
 Run: `scripts/test-commit-hook.sh 2>&1 | grep -E '^FAIL|PASSED|FAILED'; scripts/check.sh 2>&1 | grep -E '^FAIL|PASSED|FAILED'`
-Expected: `HOOK TESTS PASSED` (33 cases) and `ALL CHECKS PASSED`. If "git commit inside a heredoc being written to a file" still fails, print `masked_ranges(command)` for that fixture: the range must start on the line after `<<'EOF'` and end after the `EOF` line, and `m.start(1)` of the inner `git` must fall inside it.
+Expected: `HOOK TESTS PASSED` (34 cases) and `ALL CHECKS PASSED`. If "git commit inside a heredoc being written to a file" still fails, print `masked_ranges(command)` for that fixture: the range must start on the line after `<<'EOF'` and end after the `EOF` line, and `m.start(1)` of the inner `git` must fall inside it.
 
 - [ ] **Step 7: Commit**
 
@@ -1153,8 +1177,8 @@ check-commit-msg.py skips a git commit that sits inside a heredoc body
 opened earlier (file content or a message body, not a command), reads
 -F/--file messages relative to the payload's cwd, leaves --amend
 --no-edit, --fixup/--squash and -C/-c alone, and rejects a message the
-shell would compute ($(...), backticks, -F -) with a "could not be read"
-reason. Ten fixtures added to scripts/test-commit-hook.sh.
+shell would compute ($(...), backticks, $VAR, -F -) with a "could not be
+read" reason. Eleven fixtures added to scripts/test-commit-hook.sh.
 
 ## Why
 
@@ -1163,7 +1187,7 @@ reason. Ten fixtures added to scripts/test-commit-hook.sh.
 
 ## Risk
 
-Low. All 33 fixtures pass; internal errors still exit 0.
+Low. All 34 fixtures pass; internal errors still exit 0.
 
 Created by KevTheDev
 EOF
