@@ -291,4 +291,74 @@ t "rejection prints the convention" 2 "Commit message convention" <<'CMD'
 git commit -m "feat: add thing"
 CMD
 
+echo "=== reading the message ==="
+t "git commit inside a heredoc being written to a file" 0 <<'CMD'
+cat > docs/plan.md <<'EOF'
+Then commit:
+
+git commit -m "bad message"
+EOF
+CMD
+t "body line starting with git commit is not an invocation" 0 <<'CMD'
+git commit -m "$(cat <<'EOF'
+feat: add the hook
+
+## What
+
+git commit -m "anything" is now checked by a hook.
+
+## Why
+
+- Messages were unstructured.
+
+## Risk
+
+None. Fail-open on internal errors.
+EOF
+)"
+CMD
+printf 'chore: message from a file\n\n## What\n\nFrom a file.\n\n## Why\n\n- Testing -F.\n\n## Risk\n\nNone.\n' >"$TMP/good.txt"
+t "valid via -F file" 0 <<CMD
+git commit -F $TMP/good.txt
+CMD
+t "-F file that does not exist" 2 "could not be read" <<'CMD'
+git commit -F /nonexistent/message.txt
+CMD
+t "-F - (stdin)" 2 "could not be read" <<'CMD'
+git commit -F -
+CMD
+t "message from command substitution" 2 "could not be read" <<'CMD'
+git commit -m "$(git log -1 --format=%s)"
+CMD
+t "message from backticks" 2 "could not be read" <<'CMD'
+git commit -m "`date`"
+CMD
+t "message from a shell variable" 2 "could not be read" <<'CMD'
+git commit -m "$MSG"
+CMD
+t "-c reuses a message" 0 <<'CMD'
+git commit -c HEAD~1
+CMD
+t "--amend with a conforming message" 0 <<'CMD'
+git commit --amend -m "$(cat <<'EOF'
+fix: correct the thing
+
+## What
+
+Corrects it.
+
+## Why
+
+- It was wrong.
+
+## Risk
+
+None. Same test still passes.
+EOF
+)"
+CMD
+t "--amend with a bad message" 2 "subject: must be" <<'CMD'
+git commit --amend -m "oops"
+CMD
+
 if [ "$fail" -eq 0 ]; then echo "HOOK TESTS PASSED"; else echo "HOOK TESTS FAILED"; exit 1; fi

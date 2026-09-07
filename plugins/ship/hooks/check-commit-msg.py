@@ -27,6 +27,12 @@ COMMIT_RE = re.compile(
 # $(cat <<'TAG'  -- the one command substitution the hook can read.
 CAT_HEREDOC_RE = re.compile(r"\$\(\s*cat\s+<<(-?)\s*(['\"]?)(\w+)\2[^\n]*\n")
 
+# Any heredoc opener (not a <<< here-string).  Its body is content, not commands.
+HEREDOC_RE = re.compile(r"(?<!<)<<(?!<)(-?)\s*(['\"]?)(\w+)\2")
+
+UNREADABLE = "message could not be read; pass it with -m \"$(cat <<'EOF' ... EOF)\""
+SKIP_LONG = ("--fixup", "--squash", "--reuse-message", "--reedit-message")
+
 
 class Unreadable(Exception):
     """A message exists but the hook cannot recover its text."""
@@ -64,9 +70,30 @@ def skip_substitution(command, pos):
     raise Unreadable()
 
 
+def masked_ranges(text):
+    """Character ranges that are heredoc bodies: file content, not commands."""
+    ranges = []
+    for m in HEREDOC_RE.finditer(text):
+        nl = text.find("\n", m.end())
+        if nl == -1:
+            continue
+        _body, end = heredoc_body(text, nl + 1, m.group(3), m.group(1) == "-")
+        ranges.append((nl + 1, end))
+    return ranges
+
+
 def find_invocations(command):
-    """Index just after each `commit` word that starts a git commit command."""
-    return [m.end() for m in COMMIT_RE.finditer(command)]
+    """Index just after each `commit` word that starts a git commit command.
+    A `git commit` inside a heredoc body opened earlier is content being
+    written to a file (or a message body), not a command, and is skipped."""
+    masks = masked_ranges(command)
+    found = []
+    for m in COMMIT_RE.finditer(command):
+        git_at = m.start(1)
+        if any(a <= git_at < b for a, b in masks):
+            continue
+        found.append(m.end())
+    return found
 
 
 def tokenize(command, pos):
@@ -109,6 +136,9 @@ def tokenize(command, pos):
                             if close == -1:
                                 raise Unreadable()
                             pos = close + 1
+                    elif c == "$" and pos + 1 < n and (command[pos + 1].isalnum() or command[pos + 1] in "_{@*#?!$-"):
+                        readable = False
+                        pos += 1
                     elif c == "`":
                         readable = False
                         pos += 1
@@ -121,6 +151,9 @@ def tokenize(command, pos):
             elif command.startswith("$(", pos):
                 readable = False
                 pos = skip_substitution(command, pos)
+            elif ch == "$" and pos + 1 < n and (command[pos + 1].isalnum() or command[pos + 1] in "_{@*#?!$-"):
+                readable = False
+                pos += 1
             elif ch == "`":
                 readable = False
                 pos += 1
@@ -133,30 +166,67 @@ def tokenize(command, pos):
         tokens.append(("".join(word), readable))
 
 
-def message_from(tokens):
-    """The message an invocation passes with -m/--message, or None if it has none."""
-    parts = []
+def message_from(tokens, cwd):
+    """The message an invocation will use, or None when the hook does not judge
+    it: --amend --no-edit, --fixup/--squash, -C/-c (reuse a message), or no
+    message argument at all.  Raises Unreadable when a message exists that
+    the hook cannot recover."""
+    parts, files = [], []
+    amend = no_edit = False
     i = 0
     while i < len(tokens):
-        text, _readable = tokens[i]
-        nxt = tokens[i + 1][0] if i + 1 < len(tokens) else None
-        if text.startswith("--message"):
+        text, readable = tokens[i]
+        nxt = tokens[i + 1] if i + 1 < len(tokens) else None
+        if text.startswith("--"):
             name, eq, val = text.partition("=")
-            if name == "--message":
+            if name in SKIP_LONG:
+                return None
+            if name == "--amend":
+                amend = True
+            elif name == "--no-edit":
+                no_edit = True
+            elif name in ("--message", "--file"):
                 if eq:
-                    parts.append(val)
+                    value = (val, readable)
                 elif nxt is not None:
-                    parts.append(nxt)
+                    value = nxt
                     i += 1
-        elif text.startswith("-") and not text.startswith("--") and "m" in text[1:]:
-            rest = text[text.index("m", 1) + 1:]
-            if rest:
-                parts.append(rest)
-            elif nxt is not None:
-                parts.append(nxt)
-                i += 1
+                else:
+                    return None
+                (parts if name == "--message" else files).append(value)
+        elif text.startswith("-") and len(text) > 1:
+            for j, ch in enumerate(text[1:], 1):
+                if ch in "Cc":
+                    return None
+                if ch in "mF":
+                    rest = text[j + 1:]
+                    if rest:
+                        value = (rest, readable)
+                    elif nxt is not None:
+                        value = nxt
+                        i += 1
+                    else:
+                        return None
+                    (parts if ch == "m" else files).append(value)
+                    break
         i += 1
-    return "\n\n".join(parts) if parts else None
+    if (amend and no_edit) or not (parts or files):
+        return None
+    texts = []
+    for text, readable in parts:
+        if not readable:
+            raise Unreadable()
+        texts.append(text)
+    for text, readable in files:
+        if not readable or text == "-":
+            raise Unreadable()
+        path = text if os.path.isabs(text) else os.path.join(cwd, text)
+        try:
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                texts.append(fh.read())
+        except OSError:
+            raise Unreadable()
+    return "\n\n".join(texts)
 
 
 def validate(message):
@@ -213,9 +283,14 @@ def main():
     command = (payload.get("tool_input") or {}).get("command")
     if not isinstance(command, str):
         return 0
+    cwd = payload.get("cwd") or os.getcwd()
     problems = []
     for pos in find_invocations(command):
-        message = message_from(tokenize(command, pos))
+        try:
+            message = message_from(tokenize(command, pos), cwd)
+        except Unreadable:
+            problems.append(UNREADABLE)
+            continue
         if message is not None:
             problems.extend(validate(message))
     if not problems:
