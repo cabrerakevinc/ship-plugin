@@ -168,11 +168,11 @@ def tokenize(command, pos):
 
 def message_from(tokens, cwd):
     """The message an invocation will use, or None when the hook does not judge
-    it: --amend --no-edit, --fixup/--squash, -C/-c (reuse a message), or no
-    message argument at all.  Raises Unreadable when a message exists that
-    the hook cannot recover."""
+    it: --fixup/--squash, -C/-c (reuse a message), or no message argument at
+    all.  Raises Unreadable when a message exists that the hook cannot
+    recover.  An --amend --no-edit without -m has no message and is skipped
+    for that reason; with -m it is judged."""
     parts, files = [], []
-    amend = no_edit = False
     i = 0
     while i < len(tokens):
         text, readable = tokens[i]
@@ -181,11 +181,7 @@ def message_from(tokens, cwd):
             name, eq, val = text.partition("=")
             if name in SKIP_LONG:
                 return None
-            if name == "--amend":
-                amend = True
-            elif name == "--no-edit":
-                no_edit = True
-            elif name in ("--message", "--file"):
+            if name in ("--message", "--file"):
                 if eq:
                     value = (val, readable)
                 elif nxt is not None:
@@ -210,7 +206,7 @@ def message_from(tokens, cwd):
                     (parts if ch == "m" else files).append(value)
                     break
         i += 1
-    if (amend and no_edit) or not (parts or files):
+    if not (parts or files):
         return None
     texts = []
     for text, readable in parts:

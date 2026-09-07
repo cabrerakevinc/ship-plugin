@@ -360,5 +360,15 @@ CMD
 t "--amend with a bad message" 2 "subject: must be" <<'CMD'
 git commit --amend -m "oops"
 CMD
+t "--amend --no-edit with a bad -m" 2 "subject: must be" <<'CMD'
+git commit --amend --no-edit -m "oops"
+CMD
+printf 'oops\n' >"$TMP/bad.txt"
+t "-F file with a bad message" 2 "subject: must be" <<CMD
+git commit -F $TMP/bad.txt
+CMD
+t "message from an unquoted shell variable" 2 "could not be read" <<'CMD'
+git commit -m $MSG
+CMD
 
 if [ "$fail" -eq 0 ]; then echo "HOOK TESTS PASSED"; else echo "HOOK TESTS FAILED"; exit 1; fi

@@ -181,11 +181,13 @@ invocation remains: exit 0.
 
 **Extraction (§5.2).** For each invocation, read its arguments up to the end
 of that shell command and recover the message. If the invocation is one the
-hook does not judge (`--amend` with `--no-edit`, `--fixup`, `--squash`,
+hook does not judge (`--fixup`, `--squash`,
 `-C`/`-c`/`--reuse-message`/`--reedit-message`, or no message argument at
-all): skip it. If a message argument exists but cannot be read (command
-substitution other than a `cat` heredoc, a `-F` file that does not exist,
-`-F -`): block with the reason `message could not be read; pass it with
+all): skip it. An `--amend --no-edit` without `-m` has no message argument
+and is skipped for that reason; with `-m` it is judged. If a message
+argument exists but cannot be read (command substitution other than a
+`cat` heredoc, a `-F` file that does not exist, `-F -`): block with the
+reason `message could not be read; pass it with
 -m "$(cat <<'EOF' ... EOF)"`.
 
 **Validation (§5.3).** Check the recovered message. Every invocation in the
@@ -314,6 +316,9 @@ the script (JSON built with python so escaping is right). Matrix:
 | Message is inside an outer heredoc (`cat > plan.md <<'EOF' … git commit -m "bad" … EOF`) | 0 |
 | `grep -rn "git commit -m" scripts/` | 0 |
 | `git commit --amend --no-edit` | 0 |
+| `git commit --amend --no-edit -m "oops"` | 2, `subject: must be` |
+| `-F` file containing a bad message | 2, `subject: must be` |
+| `-m $MSG` (unquoted shell variable) | 2, `could not be read` |
 | `git commit --fixup HEAD~1` | 0 |
 | `git commit` (no message) | 0 |
 | stdin not JSON | 0 |
@@ -391,6 +396,11 @@ report `match:`.
 - Windows: hook scripts are bash; the polyglot wrapper superpowers ships is
   not needed on Kevin's machines.
 - Commits made through tools other than Bash (there are none).
+- Quote-aware heredoc detection. `HEREDOC_RE` (§5.1) is quote- and
+  arithmetic-blind: a `<<` inside quotes or `$(( ))` that has no matching
+  terminator line masks everything after it, so a `git commit` later in the
+  same command goes unchecked. Fail-open, contrived, and left as a known
+  limitation; the fix is a quote-tracking scanner.
 
 ---
 
