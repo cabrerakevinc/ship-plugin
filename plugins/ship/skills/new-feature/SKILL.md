@@ -1,5 +1,5 @@
 ---
-description: Implements a feature end to end across the relevant platform(s) - solutions-architect (if needed), implementation, QA, tech-lead review
+description: Implements a feature end to end across the relevant platform(s) - solutions-architect (if needed), implementation, QA, tech-lead review, one commit
 argument-hint: [ticket ID or description]
 disable-model-invocation: true
 ---
@@ -84,6 +84,25 @@ ready-for-review state — in Linear, e.g. "Done," "In Review," or reassigning
 it to the user (check CLAUDE.md or ask if it isn't obvious); in
 `docs/projma/`, status `in-review` in `tasks.csv`, with the confirmed DoD
 items ticked in the ticket file and one to three terse bullets of durable
-learnings appended to `docs/projma/memory.md` — and tell the user clearly
-that it's ready for their final check. Never set the ticket to "Closed" (or
-your tracker's equivalent) yourself — that's the user's call alone.
+learnings appended to `docs/projma/memory.md`. Never set the ticket to
+"Closed" (or your tracker's equivalent) yourself — that's the user's call
+alone.
+
+Then commit — once, yourself, on the branch that is checked out. Run
+`git status` and stage only what belongs to this ticket: the files the
+specialists reported changing, the docs you updated and, on the file
+tracker, the `docs/projma/` files you just wrote, so the sign-off log lands
+with the code. Never `git add -A`; leave out any untracked file you can't
+account for and name it to the user. Write the message from
+`git diff --staged` in the plugin's commit convention (the session-start
+note carries it; a hook enforces it): subject `feat: <summary> (<ticket
+ID>)` — `fix`, `chore`, `docs`, `refactor`, `test` or `perf` when that is
+more honest — then `## What` (the changes, condensed from the specialists'
+reports), `## Why` (the ticket's problem and scope, as bullets) and
+`## Risk` (what `ship:qa-tester` and `ship:tech-lead-reviewer` flagged and how
+it was handled; `None.` with a one-line reason otherwise). No push, no
+branch, checkout, remote, amend, rebase or reset — those are the user's.
+If there is nothing to commit or the commit fails, say so and stop; the
+ticket stays in review. After a successful commit, post its short SHA and
+subject as the final sign-off comment, and tell the user clearly that it's
+ready for their final check.

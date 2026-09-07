@@ -1,5 +1,5 @@
 ---
-description: Fast lane for bug fixes and hotfixes - minimal fix, targeted test, quick review
+description: Fast lane for bug fixes and hotfixes - minimal fix, targeted test, quick review, one commit
 argument-hint: [ticket ID or bug description]
 disable-model-invocation: true
 ---
@@ -43,5 +43,21 @@ subagent to draft a follow-up ticket, and create it yourself (Linear, or
 Once `ship:tech-lead-reviewer` is satisfied, move the ticket to whatever this
 tracker calls its pre-closed, ready-for-review state (`in-review` in
 `tasks.csv` for `docs/projma/`, with one to three terse bullets of durable
-learnings appended to `docs/projma/memory.md`) and tell the user it's ready
-for their final check. Never mark it "Closed" (or equivalent) yourself.
+learnings appended to `docs/projma/memory.md`). Never mark it "Closed" (or
+equivalent) yourself.
+
+Then commit — once, yourself, on the branch that is checked out. Run
+`git status` and stage only what belongs to this fix: the files the
+specialist reported changing, the test you added and, on the file tracker,
+the `docs/projma/` files you just wrote. Never `git add -A`; leave out any
+untracked file you can't account for and name it to the user. Write the
+message from `git diff --staged` in the plugin's commit convention (the
+session-start note carries it; a hook enforces it): subject `fix: <summary>
+(<ticket ID>)`, then `## What` (the change, condensed from the specialist's
+report), `## Why` (the bug and its root cause, as bullets) and `## Risk`
+(what `ship:qa-tester` and `ship:tech-lead-reviewer` flagged and how it was
+handled; `None.` with a one-line reason otherwise). No push, no branch,
+checkout, remote, amend, rebase or reset — those are the user's. If there
+is nothing to commit or the commit fails, say so and stop; the ticket stays
+in review. After a successful commit, post its short SHA and subject as the
+final sign-off comment, and tell the user it's ready for their final check.

@@ -113,14 +113,28 @@ expect_refs $S/new-feature/SKILL.md front-end-web-developer 2
 expect_refs $S/new-feature/SKILL.md front-end-ios-engineer 1
 expect_refs $S/new-feature/SKILL.md front-end-android-engineer 1
 expect_refs $S/new-feature/SKILL.md backend-engineer 1
-expect_refs $S/new-feature/SKILL.md qa-tester 2
-expect_refs $S/new-feature/SKILL.md tech-lead-reviewer 2
+expect_refs $S/new-feature/SKILL.md qa-tester 3
+expect_refs $S/new-feature/SKILL.md tech-lead-reviewer 3
 expect_refs $S/new-feature/SKILL.md projma 1
 grep -q 'read-only' $S/new-feature/SKILL.md 2>/dev/null || bad "$S/new-feature/SKILL.md must carry the read-only AWS permission protocol"
-for r in solutions-architect front-end-ios-engineer front-end-android-engineer front-end-web-developer backend-engineer qa-tester ba-intake projma; do
+for r in solutions-architect front-end-ios-engineer front-end-android-engineer front-end-web-developer backend-engineer ba-intake projma; do
   expect_refs $S/hotfix/SKILL.md $r 1
 done
-expect_refs $S/hotfix/SKILL.md tech-lead-reviewer 2
+expect_refs $S/hotfix/SKILL.md qa-tester 2
+expect_refs $S/hotfix/SKILL.md tech-lead-reviewer 3
+
+# Final commit step (spec 2026-09-05 §4.6): stage by name, message from the staged diff, never push.
+for s in new-feature hotfix; do
+  f="$S/$s/SKILL.md"; [ -f "$f" ] || continue
+  for must in 'git status' 'git diff --staged' '## What' '## Why' '## Risk' 'Never `git add -A`' 'short SHA'; do
+    grep -qF -- "$must" "$f" || bad "$f: commit step must mention '$must'"
+  done
+  if grep -q 'git push' "$f"; then bad "$f: must not mention git push"; else ok "$f: commit step present, no git push"; fi
+done
+for a in front-end-ios-engineer front-end-android-engineer front-end-web-developer backend-engineer; do
+  f="$A/$a.md"; [ -f "$f" ] || continue
+  if grep -q "Don't commit, branch or" "$f"; then ok "$f: tells the agent not to commit"; else bad "$f: missing the don't-commit line"; fi
+done
 
 # === projma ===
 P=plugins/ship/skills/projma
