@@ -94,10 +94,14 @@ specialists reported changing, the docs you updated and, on the file
 tracker, the `docs/projma/` files you just wrote, so the sign-off log lands
 with the code. Never `git add -A`; leave out any untracked file you can't
 account for and name it to the user. Write the message from
-`git diff --staged` in the plugin's commit convention (the session-start
-note carries it; a hook enforces it): subject `feat: <summary> (<ticket
-ID>)` — `fix`, `chore`, `docs`, `refactor`, `test` or `perf` when that is
-more honest — then `## What` (the changes, condensed from the specialists'
+`git diff --staged`. If this project has its own commit convention — a
+CONTRIBUTING guide, a commit template, a commitlint config, a rule in
+CLAUDE.md, or a consistent pattern in `git log` — follow it exactly, the
+way any newcomer to the project would; the plugin's shape never overrides
+a project's. Only if the project has none, use the default shape from the
+session-start note: subject `feat: <summary> (<ticket ID>)` — `fix`,
+`chore`, `docs`, `refactor`, `test` or `perf` when that is more honest —
+then `## What` (the changes, condensed from the specialists'
 reports), `## Why` (the ticket's problem and scope, as bullets) and
 `## Risk` (what `ship:qa-tester` and `ship:tech-lead-reviewer` flagged and how
 it was handled; `None.` with a one-line reason otherwise). No push, no

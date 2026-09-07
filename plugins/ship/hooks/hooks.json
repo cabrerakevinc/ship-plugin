@@ -1,5 +1,5 @@
 {
-  "description": "ship commit convention: hands the model the convention at session start and rejects git commit commands whose message does not follow it",
+  "description": "ship commit convention: hands the model a commit message note at session start (a project's own conventions come first; a default shape for repos that have none)",
   "hooks": {
     "SessionStart": [
       {
@@ -8,18 +8,6 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/check-commit.sh\"",
             "timeout": 10
           }
         ]

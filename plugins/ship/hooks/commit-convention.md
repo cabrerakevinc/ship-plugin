@@ -1,7 +1,13 @@
 # Commit message convention
 
-Every `git commit` in this session uses this shape. A hook rejects any
-that doesn't and shows this note again.
+A project's own conventions come first. If this repository already says
+how commits should look — a CONTRIBUTING guide, a commit template, a
+commitlint or similar config, a rule in CLAUDE.md, or simply a consistent
+pattern in `git log` — follow that, exactly as its contributors do, and
+ignore the rest of this note. A newcomer does not bring their own style.
+
+Only when the repository has no convention of its own, use this shape,
+so that history stays readable:
 
     <type>(<scope>)?: <summary> (<ref>)?
 
@@ -23,8 +29,7 @@ Subject: one line, at most 72 characters, no trailing period.
 - `scope` is optional: the module or area, lowercase, as in `fix(stores):`.
 - `summary` is imperative: "move", not "moved" or "moves".
 - `ref` is optional: the ticket ID or issue number when one exists, as in
-  `(BEV-123)`, `(T-012)` or `(#3551)`. A ship workflow always has a
-  ticket, so it always fills this in.
+  `(BEV-123)`, `(T-012)` or `(#3551)`.
 
 Body: three `##` sections in this order, each non-empty, wrapped at 72
 columns.
@@ -36,5 +41,3 @@ columns.
   one-line reason when nothing was flagged.
 
 Anything after Risk (a `Created by` trailer, `Co-authored-by`) is fine.
-Pass the message with `-m "$(cat <<'EOF' ... EOF)"` so the hook can read
-it.

@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Superseded 2026-09-07:** the enforcing checker built in Tasks 3–5 was withdrawn in favour of guidance that defers to a project's own conventions. See the spec's Revision section. The tasks below are the record of what was built.
+
 **Goal:** Every commit Claude makes in a session where `ship` is enabled has the shape `type: summary (ref)` + `## What` / `## Why` / `## Risk`, taught by a SessionStart hook, enforced by a PreToolUse hook, and produced by `/ship:new-feature` and `/ship:hotfix` at the end of their workflows.
 
 **Architecture:** The plugin gains a `hooks/` directory: `hooks.json` registers a SessionStart hook (emits `commit-convention.md` as additional context) and a PreToolUse hook on Bash (`check-commit.sh`, a bash fast path that hands anything mentioning `git` and `commit` to `check-commit-msg.py`, which parses the command, recovers the message, validates it, and exits 2 with reasons to block). The two orchestrating skills get a final commit step; the four implementing agents are told not to commit. `scripts/test-commit-hook.sh` is a fixture harness for the checker; `check.sh` and `smoke.sh` grow matching sections; `spec-diff.py` learns that the newest spec defining a file wins.

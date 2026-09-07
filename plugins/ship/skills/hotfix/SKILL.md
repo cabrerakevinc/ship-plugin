@@ -51,10 +51,14 @@ Then commit — once, yourself, on the branch that is checked out. Run
 specialist reported changing, the test you added and, on the file tracker,
 the `docs/projma/` files you just wrote. Never `git add -A`; leave out any
 untracked file you can't account for and name it to the user. Write the
-message from `git diff --staged` in the plugin's commit convention (the
-session-start note carries it; a hook enforces it): subject `fix: <summary>
-(<ticket ID>)`, then `## What` (the change, condensed from the specialist's
-report), `## Why` (the bug and its root cause, as bullets) and `## Risk`
+message from `git diff --staged`. If this project has its own commit
+convention — a CONTRIBUTING guide, a commit template, a commitlint config,
+a rule in CLAUDE.md, or a consistent pattern in `git log` — follow it
+exactly; the plugin's shape never overrides a project's. Only if the
+project has none, use the default shape from the session-start note:
+subject `fix: <summary> (<ticket ID>)`, then `## What` (the change,
+condensed from the specialist's report), `## Why` (the bug and its root
+cause, as bullets) and `## Risk`
 (what `ship:qa-tester` and `ship:tech-lead-reviewer` flagged and how it was
 handled; `None.` with a one-line reason otherwise). No push, no branch,
 checkout, remote, amend, rebase or reset — those are the user's. If there

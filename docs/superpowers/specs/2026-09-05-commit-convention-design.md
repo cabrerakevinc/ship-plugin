@@ -1,8 +1,39 @@
 # Commit convention for the `ship` plugin — design
 
 **Date:** 2026-09-05
-**Status:** approved design, awaiting implementation plan
+**Status:** built on branch `commit-convention`; revised 2026-09-07 to guidance only (see Revision below)
 **Amends:** `2026-09-04-ship-plugin-design.md` (§10 listed hooks as out of scope; this spec brings them in)
+
+## Revision 2026-09-07 — guidance only, the project's conventions first
+
+Kevin's goal was a clean default for repositories that have **no** commit
+convention of their own — never a style imposed on a project that has one.
+A newcomer follows the house style; so does this plugin. The enforcing
+PreToolUse checker built under this spec (§4.4–§4.5, §5, the fixture
+harness in §6, Appendix A.4) is therefore withdrawn: a hook that blocks a
+commit before the project's own tooling sees it would fight any project
+with commitlint, a commit template, or a CONTRIBUTING rule. Those sections
+remain below as the record of what was built and removed on branch
+`commit-convention`.
+
+What ships instead:
+
+- The SessionStart hook (§4.3) hands the model `commit-convention.md`
+  (Appendix A.2), which now opens with "a project's own conventions come
+  first" and presents the What / Why / Risk shape only as the default for a
+  repository that has none. It is guidance the model reads; nothing rejects
+  a commit. `hooks.json` (Appendix A.1) registers only this hook.
+- `new-feature` and `hotfix` (Appendix A.5, A.6) still commit once at the
+  end, following the project's convention when one exists and the default
+  shape only when none does. The implementing agents keep their
+  don't-commit line (A.7–A.10).
+- `check.sh` asserts the note's wording, that `hooks.json` has no
+  PreToolUse entry, and that the checker files are gone. `smoke.sh` checks
+  the note reaches a real session and that a conforming commit lands in a
+  repo with no convention. The README says the same in one paragraph.
+
+Sections §3 ("Rules the hook enforces"), §4.2's second hook, §4.4, §4.5,
+§5 and the harness rows of §6 no longer describe shipped behaviour.
 
 ## 1. Purpose
 
@@ -434,7 +465,7 @@ are code and prose written from §4–§6, not copied.
 
 ```json
 {
-  "description": "ship commit convention: hands the model the convention at session start and rejects git commit commands whose message does not follow it",
+  "description": "ship commit convention: hands the model a commit message note at session start (a project's own conventions come first; a default shape for repos that have none)",
   "hooks": {
     "SessionStart": [
       {
@@ -443,18 +474,6 @@ are code and prose written from §4–§6, not copied.
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/check-commit.sh\"",
             "timeout": 10
           }
         ]
@@ -469,8 +488,14 @@ are code and prose written from §4–§6, not copied.
 ```markdown
 # Commit message convention
 
-Every `git commit` in this session uses this shape. A hook rejects any
-that doesn't and shows this note again.
+A project's own conventions come first. If this repository already says
+how commits should look — a CONTRIBUTING guide, a commit template, a
+commitlint or similar config, a rule in CLAUDE.md, or simply a consistent
+pattern in `git log` — follow that, exactly as its contributors do, and
+ignore the rest of this note. A newcomer does not bring their own style.
+
+Only when the repository has no convention of its own, use this shape,
+so that history stays readable:
 
     <type>(<scope>)?: <summary> (<ref>)?
 
@@ -492,8 +517,7 @@ Subject: one line, at most 72 characters, no trailing period.
 - `scope` is optional: the module or area, lowercase, as in `fix(stores):`.
 - `summary` is imperative: "move", not "moved" or "moves".
 - `ref` is optional: the ticket ID or issue number when one exists, as in
-  `(BEV-123)`, `(T-012)` or `(#3551)`. A ship workflow always has a
-  ticket, so it always fills this in.
+  `(BEV-123)`, `(T-012)` or `(#3551)`.
 
 Body: three `##` sections in this order, each non-empty, wrapped at 72
 columns.
@@ -505,8 +529,6 @@ columns.
   one-line reason when nothing was flagged.
 
 Anything after Risk (a `Created by` trailer, `Co-authored-by`) is fine.
-Pass the message with `-m "$(cat <<'EOF' ... EOF)"` so the hook can read
-it.
 ```
 
 ### A.3 `plugins/ship/hooks/session-start.sh`
@@ -526,7 +548,10 @@ PY
 exit 0
 ```
 
-### A.4 `plugins/ship/hooks/check-commit.sh`
+### A.4 — withdrawn 2026-09-07 (`check-commit.sh`, see Revision)
+
+The wrapper below was removed together with `check-commit-msg.py` and
+`scripts/test-commit-hook.sh`; kept as history.
 
 ```bash
 #!/usr/bin/env bash
@@ -640,10 +665,14 @@ specialists reported changing, the docs you updated and, on the file
 tracker, the `docs/projma/` files you just wrote, so the sign-off log lands
 with the code. Never `git add -A`; leave out any untracked file you can't
 account for and name it to the user. Write the message from
-`git diff --staged` in the plugin's commit convention (the session-start
-note carries it; a hook enforces it): subject `feat: <summary> (<ticket
-ID>)` — `fix`, `chore`, `docs`, `refactor`, `test` or `perf` when that is
-more honest — then `## What` (the changes, condensed from the specialists'
+`git diff --staged`. If this project has its own commit convention — a
+CONTRIBUTING guide, a commit template, a commitlint config, a rule in
+CLAUDE.md, or a consistent pattern in `git log` — follow it exactly, the
+way any newcomer to the project would; the plugin's shape never overrides
+a project's. Only if the project has none, use the default shape from the
+session-start note: subject `feat: <summary> (<ticket ID>)` — `fix`,
+`chore`, `docs`, `refactor`, `test` or `perf` when that is more honest —
+then `## What` (the changes, condensed from the specialists'
 reports), `## Why` (the ticket's problem and scope, as bullets) and
 `## Risk` (what `ship:qa-tester` and `ship:tech-lead-reviewer` flagged and how
 it was handled; `None.` with a one-line reason otherwise). No push, no
@@ -710,10 +739,14 @@ Then commit — once, yourself, on the branch that is checked out. Run
 specialist reported changing, the test you added and, on the file tracker,
 the `docs/projma/` files you just wrote. Never `git add -A`; leave out any
 untracked file you can't account for and name it to the user. Write the
-message from `git diff --staged` in the plugin's commit convention (the
-session-start note carries it; a hook enforces it): subject `fix: <summary>
-(<ticket ID>)`, then `## What` (the change, condensed from the specialist's
-report), `## Why` (the bug and its root cause, as bullets) and `## Risk`
+message from `git diff --staged`. If this project has its own commit
+convention — a CONTRIBUTING guide, a commit template, a commitlint config,
+a rule in CLAUDE.md, or a consistent pattern in `git log` — follow it
+exactly; the plugin's shape never overrides a project's. Only if the
+project has none, use the default shape from the session-start note:
+subject `fix: <summary> (<ticket ID>)`, then `## What` (the change,
+condensed from the specialist's report), `## Why` (the bug and its root
+cause, as bullets) and `## Risk`
 (what `ship:qa-tester` and `ship:tech-lead-reviewer` flagged and how it was
 handled; `None.` with a one-line reason otherwise). No push, no branch,
 checkout, remote, amend, rebase or reset — those are the user's. If there

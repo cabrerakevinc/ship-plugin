@@ -4,7 +4,7 @@ KevTheDev's Claude Code plugin marketplace, named `kevthedev`. One repo, install
 
 | Plugin | What it is |
 |---|---|
-| [`ship`](plugins/ship) | A role-based dev team: ticket intake, architecture, platform engineers, QA and tech-lead review, run by `/ship:new-ticket`, `/ship:new-feature` and `/ship:hotfix`. Falls back to a file tracker (`/ship:projma`) when Linear isn't connected. Teaches and enforces a What / Why / Risk [commit convention](#commit-convention) in every repo where it's enabled. |
+| [`ship`](plugins/ship) | A role-based dev team: ticket intake, architecture, platform engineers, QA and tech-lead review, run by `/ship:new-ticket`, `/ship:new-feature` and `/ship:hotfix`. Falls back to a file tracker (`/ship:projma`) when Linear isn't connected. Adds a clean default [commit message shape](#commit-convention) for repos that have no convention of their own, and never overrides one that does. |
 
 ## Install on a new machine
 
@@ -33,7 +33,7 @@ Or open `/plugin` inside Claude Code. There is no version number to bump: the gi
 Commands. You run the first three; Claude never triggers them on its own. `/ship:projma` can also be invoked by those skills, after you say yes to creating the tracker.
 
 - `/ship:new-ticket <idea or bug>` — `ship:ba-intake` drafts a title, scope and a Definition of Done checklist; the ticket is created for you.
-- `/ship:new-feature <ticket or description>` — solutions-architect (when the ticket is unclear, multi-platform, or non-trivial; it insists on understanding the infrastructure first, asking you for explicit read-only AWS access or a diagram if the repo doesn't tell it enough) → platform engineer(s) → qa-tester → tech-lead-reviewer, posting a sign-off on the ticket after every step. Ends with the ticket in the ready-for-review state and one commit in the [commit convention](#commit-convention), ticket ID in the subject. Never pushes. Never closes the ticket.
+- `/ship:new-feature <ticket or description>` — solutions-architect (when the ticket is unclear, multi-platform, or non-trivial; it insists on understanding the infrastructure first, asking you for explicit read-only AWS access or a diagram if the repo doesn't tell it enough) → platform engineer(s) → qa-tester → tech-lead-reviewer, posting a sign-off on the ticket after every step. Ends with the ticket in the ready-for-review state and one commit, in the project's own commit convention or, if it has none, the plugin's [default shape](#commit-convention) with the ticket ID in the subject. Never pushes. Never closes the ticket.
 - `/ship:hotfix <ticket or bug>` — fast lane: reproduce, minimal fix, targeted tests, regression-focused review, one commit.
 - `/ship:projma [init | status]` — the file-based tracker. `init` scaffolds `docs/projma/`; `status` summarises open tickets.
 
@@ -53,7 +53,7 @@ Only the main session writes to the ticket tracker; no subagent has Linear or fi
 
 ## Commit convention
 
-With `ship` enabled, every commit Claude makes, in any repo, has this shape:
+`ship` never overrides a project's commit conventions. If the repo you're in has its own — a CONTRIBUTING guide, a commit template, commitlint, a rule in CLAUDE.md, or simply a consistent history — Claude follows that, the way any newcomer to the project would. Only in a repo with no convention at all does it fall back to this shape, so history stays readable:
 
 ```
 <type>(<scope>)?: <summary> (<ref>)?
@@ -63,7 +63,7 @@ With `ship` enabled, every commit Claude makes, in any repo, has this shape:
 ## Risk
 ```
 
-Two hooks in [`plugins/ship/hooks/`](plugins/ship/hooks/) do it. A SessionStart hook hands the model [the convention](plugins/ship/hooks/commit-convention.md); a PreToolUse hook rejects any `git commit` whose message doesn't follow it and shows the convention again. The hook checks structure, not content: the subject type, the 72-character limit, and three non-empty sections in order. `/ship:new-feature` and `/ship:hotfix` end by committing the finished work this way, with the ticket ID as the `ref`; they never push. A `Created by …` trailer comes from your own `attribution` setting, not the plugin. To turn it off in one profile, disable the plugin or remove its hooks under `/hooks`.
+This is guidance, not enforcement. A SessionStart hook in [`plugins/ship/hooks/`](plugins/ship/hooks/) hands the model [the note](plugins/ship/hooks/commit-convention.md) at the start of every session and again after context compaction; nothing inspects or rejects a commit. `/ship:new-feature` and `/ship:hotfix` end by committing the finished work the same way, with the ticket ID as the `ref`; they never push. A `Created by …` trailer comes from your own `attribution` setting, not the plugin. To turn the note off in one profile, disable the plugin or remove its hook under `/hooks`.
 
 ## Linear is optional
 
@@ -76,7 +76,6 @@ Without Linear, the skills use `docs/projma/` in the target repo: `tasks.csv` (t
 ```
 scripts/check.sh                    # structural checks + claude plugin validate
 scripts/smoke.sh                    # functional test: a few Claude calls, throwaway repo
-scripts/test-commit-hook.sh         # fixture tests for the commit-message hook
 claude --plugin-dir plugins/ship    # try it in a real session without installing
 ```
 

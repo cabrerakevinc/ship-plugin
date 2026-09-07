@@ -169,25 +169,22 @@ fi
 H=plugins/ship/hooks
 for f in commit-convention.md session-start.sh; do need_file "$H/$f"; done
 ctx=$(CLAUDE_PLUGIN_ROOT="$PWD/plugins/ship" bash "$H/session-start.sh" 2>/dev/null)
-if python3 -c 'import json,sys; c=json.load(sys.stdin)["hookSpecificOutput"]; assert c["hookEventName"]=="SessionStart"; t=c["additionalContext"]; assert all(h in t for h in ("## What","## Why","## Risk")), t' <<<"$ctx" 2>/dev/null; then
-  ok "session-start.sh emits the convention as SessionStart additionalContext"
+if python3 -c 'import json,sys; c=json.load(sys.stdin)["hookSpecificOutput"]; assert c["hookEventName"]=="SessionStart"; t=c["additionalContext"]; assert all(h in t for h in ("own conventions come first","## What","## Why","## Risk")), t' <<<"$ctx" 2>/dev/null; then
+  ok "session-start.sh emits the note (project first, then the default shape) as SessionStart additionalContext"
 else
   bad "session-start.sh output is not the expected JSON"
 fi
-for f in check-commit.sh check-commit-msg.py; do need_file "$H/$f"; done
-if python3 -c 'import ast,sys; ast.parse(open(sys.argv[1]).read())' "$H/check-commit-msg.py" 2>/dev/null; then ok "check-commit-msg.py parses"; else bad "check-commit-msg.py does not parse"; fi
-hout=$(mktemp)
-if scripts/test-commit-hook.sh >"$hout" 2>&1; then ok "scripts/test-commit-hook.sh"; else bad "scripts/test-commit-hook.sh"; grep -E '^FAIL' "$hout"; fi
-rm -f "$hout"
+for gone in check-commit.sh check-commit-msg.py; do [ -e "$H/$gone" ] && bad "$H/$gone must not exist: the convention is guidance only, nothing rejects a commit"; done
+[ -e scripts/test-commit-hook.sh ] && bad "scripts/test-commit-hook.sh must not exist (the enforcing hook was withdrawn)"
 
 need_file "$H/hooks.json"
 if python3 - <<'PY'
 import json, os, re
 h = json.load(open('plugins/ship/hooks/hooks.json'))['hooks']
-ss, pt = h['SessionStart'], h['PreToolUse']
+assert 'PreToolUse' not in h, "no enforcing hook: the convention is guidance only"
+ss = h['SessionStart']
 assert len(ss) == 1 and ss[0]['matcher'] == 'startup|clear|compact', ss
-assert len(pt) == 1 and pt[0]['matcher'] == 'Bash', pt
-for ev in ss + pt:
+for ev in ss:
     for hk in ev['hooks']:
         assert hk['type'] == 'command' and hk.get('timeout') == 10 and not hk.get('async'), hk
         paths = re.findall(r'\$\{CLAUDE_PLUGIN_ROOT\}(/\S+?)"', hk['command'])
@@ -195,7 +192,7 @@ for ev in ss + pt:
         for p in paths:
             assert os.path.isfile('plugins/ship' + p), p
 PY
-then ok "hooks.json registers SessionStart(startup|clear|compact) and PreToolUse(Bash) with existing scripts"; else bad "hooks.json does not match the spec"; fi
+then ok "hooks.json registers only SessionStart(startup|clear|compact), with an existing script"; else bad "hooks.json does not match the spec"; fi
 
 # === summary ===
 if [ "$fail" -eq 0 ]; then echo "ALL CHECKS PASSED"; else echo "CHECKS FAILED"; exit 1; fi

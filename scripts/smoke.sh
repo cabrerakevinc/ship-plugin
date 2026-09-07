@@ -59,18 +59,14 @@ git -C "$SCRATCH" config user.name smoke
 GITALLOW="$ALLOW,Bash(git commit:*),Bash(git log:*),Bash(git status:*),Bash(git diff:*)"
 grun() { (cd "$SCRATCH" && claude --plugin-dir "$PLUGIN" -p "$1" --output-format text --permission-mode acceptEdits --allowedTools "$GITALLOW" 2>/dev/null); }
 
-hdr=$(run "Which three '##' sections must a commit message body have, according to the commit message convention you were given at session start? Output only the three headers, one per line, nothing else.")
+hdr=$(run "According to the commit message note you were given at session start, which three '##' sections does the default shape use for a repository that has no commit convention of its own? Output only the three headers, one per line, nothing else.")
 echo "$hdr"
 for w in What Why Risk; do
   if grep -q "$w" <<<"$hdr"; then ok "session-start hook: model knows section $w"; else bad "session-start hook: '$w' missing from the model's answer"; fi
 done
 
 echo "smoke" >"$SCRATCH/smoke.txt"; git -C "$SCRATCH" add smoke.txt
-out=$(grun 'Run exactly this command, unchanged: git commit -m "bad message". If it is blocked or fails, do not retry and do not change the message; report the outcome in one sentence.'); echo "$out"
-if [ "$(git -C "$SCRATCH" rev-list --count HEAD 2>/dev/null || echo 0)" = "0" ]; then ok "PreToolUse hook blocked the bad commit"; else bad "a commit was made despite the bad message"; fi
-if grep -qiE 'hook|commit message rejected|ship commit convention' <<<"$out"; then ok "model reported the rejection"; else warn "model's report did not mention the rejection"; fi
-
-out=$(grun 'Commit the already-staged file smoke.txt with a message that follows the commit message convention from your session-start notes; use type chore. Do not push.'); echo "$out"
+out=$(grun 'This repository has no commit convention of its own. Commit the already-staged file smoke.txt following the default shape from the commit message note in your session-start notes; use type chore. Do not push.'); echo "$out"
 if [ "$(git -C "$SCRATCH" rev-list --count HEAD 2>/dev/null || echo 0)" = "1" ]; then ok "conforming commit landed"; else bad "expected exactly one commit after the conforming attempt"; fi
 if git -C "$SCRATCH" log -1 --format=%B 2>/dev/null | grep -q '^## Risk'; then ok "commit body has ## Risk"; else bad "commit body lacks ## Risk"; fi
 
