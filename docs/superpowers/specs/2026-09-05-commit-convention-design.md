@@ -409,8 +409,11 @@ report `match:`.
   that has no matching terminator masks everything after it, so a
   `git commit` later in the same command goes unchecked. A `<<` nested
   inside another heredoc's body is skipped, so embedded scripts and quoted
-  examples are safe. Fail-open, contrived, and left as a known limitation;
-  the fix is a quote-tracking scanner.
+  examples are safe. Contrived and left as a known limitation. It fails
+  open, with one exception in the other direction: if a false opener's
+  tag recurs alone on a line inside a later real heredoc body, that body
+  is cut short and a commit line being written into the file is judged
+  and rejected. The fix for both is a quote-tracking scanner.
 - Command-position bypasses. `VAR=x git commit`, `command git commit`,
   `\git commit` and a line-continued `git \` + `commit` are not detected by
   §5.1's regex; all fail open and none is a form a model writes.
