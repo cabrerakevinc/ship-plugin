@@ -166,5 +166,22 @@ hout=$(mktemp)
 if scripts/test-commit-hook.sh >"$hout" 2>&1; then ok "scripts/test-commit-hook.sh"; else bad "scripts/test-commit-hook.sh"; grep -E '^FAIL' "$hout"; fi
 rm -f "$hout"
 
+need_file "$H/hooks.json"
+if python3 - <<'PY'
+import json, os, re
+h = json.load(open('plugins/ship/hooks/hooks.json'))['hooks']
+ss, pt = h['SessionStart'], h['PreToolUse']
+assert len(ss) == 1 and ss[0]['matcher'] == 'startup|clear|compact', ss
+assert len(pt) == 1 and pt[0]['matcher'] == 'Bash', pt
+for ev in ss + pt:
+    for hk in ev['hooks']:
+        assert hk['type'] == 'command' and hk.get('timeout') == 10 and not hk.get('async'), hk
+        paths = re.findall(r'\$\{CLAUDE_PLUGIN_ROOT\}(/\S+?)"', hk['command'])
+        assert paths, hk['command']
+        for p in paths:
+            assert os.path.isfile('plugins/ship' + p), p
+PY
+then ok "hooks.json registers SessionStart(startup|clear|compact) and PreToolUse(Bash) with existing scripts"; else bad "hooks.json does not match the spec"; fi
+
 # === summary ===
 if [ "$fail" -eq 0 ]; then echo "ALL CHECKS PASSED"; else echo "CHECKS FAILED"; exit 1; fi
